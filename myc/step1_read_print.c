@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -121,6 +120,8 @@ char* print(LIST* form)
         elt = elt->next;
     }
     return buffer;
+}
+
 
 char* rep(char* s)
 {

@@ -51,7 +51,7 @@ void init_lexer(char *s)
 int lexer(void)
 {
 	char ch = ' ';
-	int i = 0;
+	int i = 0, lexsym;
 
 	lextok[0] = '\0';
 	while (ch == ' ' || ch == '\t') ch = getlexchar();
