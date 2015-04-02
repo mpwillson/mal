@@ -21,4 +21,3 @@ extern char lextok[];
 
 extern int lexer(void);
 extern void init_lexer(char *s);
-
