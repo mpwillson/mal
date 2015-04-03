@@ -6,6 +6,14 @@
 #include "reader.h"
 #include "symtab.h"
 
+#define BUFSIZE 1024
+
+void mal_error(char *msg)
+{
+    fprintf(stderr,"mal: %s\n",msg);
+    exit(1);
+}
+
 /* TBD these two routines should be in symtab.c */
 
 LIST* new_list() {
@@ -13,7 +21,7 @@ LIST* new_list() {
     
     elt = (LIST *) malloc(sizeof(LIST));
     if (elt == NULL) {
-        error("out of memory at new_list.");
+        mal_error("out of memory at new_list.");
     }
     elt->var = NULL;
     elt->next = NULL;
@@ -25,7 +33,7 @@ VAR* new_var() {
     
     var = (VAR *) malloc(sizeof(VAR));
     if (var == NULL)  {
-        error("out of memory at new_var.");
+        mal_error("out of memory at new_var.");
     }
     var->type = S_UNDEF;
     var->val.lval = NULL;
@@ -38,9 +46,14 @@ LIST* append(LIST* list,VAR* var)
 
     elt = new_list();
     elt->var = var;
-    current = list;
-    while (current->next != NULL) current = current->next;
-    current->next = elt;
+    if (list == NULL) {
+        return elt;
+    }
+    else {
+        current = list;
+        while (current->next != NULL) current = current->next;
+        current->next = elt;
+    }
     return list;
 }
 
@@ -51,30 +64,26 @@ VAR* read_list(void)
     int token_type;
 
     var = new_var();
-    form = new_list();
-
-    var->type = S_LIST;
-    var->val.lval = form;
+    form = NULL;
     token_type = lexer();
-    while (token_type != S_EOE) {
+    while (token_type != S_EOE && token_type != ')') {
         switch (token_type) {
             case '(':
                 form = append(form,read_list());
                 break;
-            case ')':
-                return var;
             default:
                 form = append(form,symbolise(token_type,lextok));
         }
         token_type = lexer();
     }
-    
+    var->type = S_LIST;
+    var->val.lval = form;
     return var;
 }
 
 LIST* read(char* s)
 {
-    VAR *var = new_var();
+    VAR *var;
     LIST *root = new_list();
     
     init_lexer(s);
@@ -92,13 +101,11 @@ char* print(LIST* form)
 {
     LIST* elt;
     char tok[LEXTOKSIZ+1];
-    static char buffer[1024];
+    char *buffer = (char *) malloc(BUFSIZE+1);
 
     buffer[0] = '\0';
     tok[0] = '\0';
     elt = form;
-    printf("print: before elt access\n");
-    printf("print: type: %d\n",elt->var->type);
     while (elt != NULL) {
         switch (elt->var->type) {
             case S_LIST:
@@ -114,7 +121,7 @@ char* print(LIST* form)
                 sprintf(tok,"%s ",elt->var->val.pval);
                 break;
             default:
-                error("print: form contains bad type.");
+                mal_error("print: form contains bad type.");
         }
         strcat(buffer,tok);
         elt = elt->next;
@@ -128,8 +135,6 @@ char* rep(char* s)
     return print(eval(read(s)));
 }
 
-#define BUFSIZE 256
-
 int main(void)
 {
     char buf[BUFSIZE+1];
@@ -142,7 +147,7 @@ int main(void)
         bufread = fgets(buf,BUFSIZE,stdin);
         at_eof = feof(stdin) || bufread == NULL;
         if (bufread) {
-            fprintf(stdout,"%s",rep(buf));
+            fprintf(stdout,"%s\n",rep(buf));
         }
     }
     fprintf(stdout,"\n");

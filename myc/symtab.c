@@ -185,7 +185,6 @@ VAR *symbolise(int type, char *s)
         case S_STR:
             new->val.pval = strsave(s);
             break;
-            
     }   
     return new;
 }
