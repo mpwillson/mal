@@ -5,7 +5,6 @@
 
 #include "reader.h"
 #include "symtab.h"
-#include "printer.h"
 
 #define BUFSIZE 1024
 
@@ -15,24 +14,39 @@ void mal_error(char *msg)
     exit(1);
 }
 
-VAR* read(char* s)
+LIST* read(char* s)
 {
     VAR *var;
+    LIST *root = new_list();
     
     init_lexer(s);
     var = read_list();
     var->type = S_ROOT;
-    return var;
+    root->var = var;
+    return root;
 }
 
-VAR* eval(VAR* var)
+LIST* eval(LIST* form)
 {
-    return var;
+    return form;
 }
 
-char* print(VAR* var)
+char* print(LIST* form)
 {
-    return print_str(var);
+    LIST* elt;
+    char tok[LEXTOKSIZ+1];
+    char *buffer = (char *) malloc(BUFSIZE+1);
+
+    buffer[0] = '\0';
+    tok[0] = '\0';
+    elt = form;
+    while (elt != NULL) {
+        tok = print_str(elt->var);
+        if (buffer[0] != '\0') strcat(buffer," ");
+        strcat(buffer,tok);
+        elt = elt->next;
+    }
+    return buffer;
 }
 
 

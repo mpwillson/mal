@@ -172,20 +172,92 @@ void dmpvar()         /* dump symbol table entries */
 /* Return VAR pointer, created from type and value */
 VAR *symbolise(int type, char *s)
 {
-    VAR *new;
+    VAR *new = new_var();
 
-    new = (VAR *) malloc(sizeof(VAR)); /* replace by new_var */
-    if (new == NULL) return NULL;
     new->type = type;
     switch (type) {
         case S_INT: 
-            new->val.ival = atoi(s);
+            new->val.ival = strtol(s,NULL,10);
+            break;
+        case S_FLOAT:
+            new->val.fval = strtod(s,NULL);
             break;
         case S_VAR:
         case S_STR:
+        case S_KEYWORD:
             new->val.pval = strsave(s);
             break;
     }   
     return new;
 }
 
+LIST* new_list() {
+    LIST* elt;
+    
+    elt = (LIST *) malloc(sizeof(LIST));
+    if (elt == NULL) {
+        mal_error("out of memory at new_list.");
+    }
+    elt->var = NULL;
+    elt->next = NULL;
+    return elt;
+}
+
+VAR* new_var() {
+    VAR* var;
+    
+    var = (VAR *) malloc(sizeof(VAR));
+    if (var == NULL)  {
+        mal_error("out of memory at new_var.");
+    }
+    var->type = S_UNDEF;
+    var->val.lval = NULL;
+    return var;
+}
+
+LIST* append(LIST* list,VAR* var)
+{
+    LIST *elt,*current;
+
+    elt = new_list();
+    elt->var = var;
+    if (list == NULL) {
+        return elt;
+    }
+    else {
+        current = list;
+        while (current->next != NULL) current = current->next;
+        current->next = elt;
+    }
+    return list;
+}
+
+VAR* read_list(void)
+{
+    LIST* form;
+    VAR* var;
+    int token_type;
+
+    var = new_var();
+    form = NULL;
+    token_type = lexer();
+    while (token_type != S_EOE && token_type != ')') {
+        switch (token_type) {
+            case '(':
+                form = append(form,read_list());
+                break;
+            case S_QUOTE:
+                printf("quote\n");
+                form = append(form,symbolise(S_VAR,lextok));
+                printf("after quote append\n");
+                form = append(form,read_list());
+                break;=b
+            default:
+                form = append(form,symbolise(token_type,lextok));
+        }
+        token_type = lexer();
+    }
+    var->type = S_LIST;
+    var->val.lval = form;
+    return var;
+}

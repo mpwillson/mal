@@ -48,30 +48,42 @@ void init_lexer(char *s)
     strncpy(lexbuf,s,LEXBUFSIZ);
 }
 
+int issymbol(char ch)
+{
+    return (isalnum(ch) || (strchr("/!£$%^&*_-+=@<>?",ch) != NULL));
+}
+
 int lexer(void)
 {
 	char ch = ' ';
 	int i = 0, lexsym;
 
 	lextok[0] = '\0';
-	while (ch == ' ' || ch == '\t') ch = getlexchar();
+	while (ch == ' ' || ch == ',' || ch == '\t') ch = getlexchar();
 	if (isdigit(ch)) {
-		while (isdigit(ch) && i < LEXTOKSIZ) {
-			lextok[i++] = ch;
-			ch = getlexchar();
-		}
-		ungetlexchar();
-		lextok[i] = '\0';
 		lexsym = S_INT;
-	}
-	else if (isalpha(ch)) {
-		while ((isalnum(ch) || ch == '_') && i <LEXTOKSIZ) {
+		while ((isdigit(ch) || ch == '.') && i < LEXTOKSIZ) {
 			lextok[i++] = ch;
 			ch = getlexchar();
 		}
 		ungetlexchar();
 		lextok[i] = '\0';
-		lexsym = S_VAR;
+        if (strchr(lextok,'.') != NULL) lexsym = S_FLOAT;
+	}
+	else if (issymbol(ch) || ch == ':') {
+        if (ch == ':') {
+            lexsym = S_KEYWORD;
+            ch = getlexchar();
+        }
+        else {
+            lexsym = S_VAR;
+        }
+        while (issymbol(ch) && i<LEXTOKSIZ) {
+			lextok[i++] = ch;
+			ch = getlexchar();
+		}
+		ungetlexchar();
+		lextok[i] = '\0';
 	}
 	else if (ch == '"') {
 		ch = getlexchar();
@@ -101,9 +113,13 @@ int lexer(void)
 		lexsym = S_EOE;
 		strcpy(lextok,"newline");
 	}
+    else if (ch == '\'') {
+        lexsym = S_QUOTE;
+        strcpy(lextok,"quote");
+    }
 	else {
 		/* unrecognised token */
-		while (ch != '\n' && ch != EOF) {
+		while (ch != '\n' && ch != EOF && i < LEXTOKSIZ) {
 			lextok[i++] = ch;
 			ch = getlexchar();
 		}
@@ -111,6 +127,6 @@ int lexer(void)
 		ungetlexchar();
 		lexsym = S_UNDEF;
 	}
- 	fprintf(stderr,"lexsym: %d, lextok: %s\n",lexsym,lextok);
+    printf("lexer: %d\n",lexsym);
     return lexsym;
 }

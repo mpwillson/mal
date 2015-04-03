@@ -7,12 +7,11 @@
 #define S_STR 3
 #define S_VAR 4
 #define S_USTR 5 /* unterminated string */
-#define S_GTEQ 6
-#define S_LTEQ 7
-#define S_NEQ 8
-#define S_EQ 9
-#define S_LIST 10
-#define S_ROOT 11
+#define S_FLOAT 6
+#define S_LIST 7
+#define S_ROOT 8 /* a list that is not a list */
+#define S_KEYWORD 9
+#define S_QUOTE 10
 
 #define LEXTOKSIZ 72
 #define LEXBUFSIZ 255

@@ -31,6 +31,10 @@ int getvar(char *,struct s_var *);
 void dmpvar();
 void initvar(void);
 VAR* symbolise(int,char*);
+LIST* new_list(void);
+VAR* new_var(void);
+LIST* append(LIST*,VAR*);
+VAR* read_list(void);
 
 #define TRUE 1
 #define FALSE 0
