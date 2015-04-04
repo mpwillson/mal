@@ -215,6 +215,17 @@ VAR* new_var() {
     return var;
 }
 
+VAR* insert(VAR* var, VAR* list)
+{
+    LIST* elt = new_list();
+
+    elt->var = var;
+    elt->next = list->val.lval;
+    list->val.lval = elt;
+    return list;
+}
+
+
 LIST* append(LIST* list,VAR* var)
 {
     LIST *elt,*current;
@@ -232,37 +243,74 @@ LIST* append(LIST* list,VAR* var)
     return list;
 }
 
-VAR* read_list(void)
+static VAR quote = {
+    S_VAR,
+    "quote"
+};
+static VAR quasiquote = {
+    S_VAR,
+    "quasiquote"
+};
+static VAR unquote = {
+    S_VAR,
+    "unquote"
+};
+static VAR splice = {
+    S_VAR,
+    "splice-unquote"
+};
+
+LIST* handle_quote(int token_type,LIST* form)
 {
-    LIST* form;
+    VAR* quoted_list = NULL;
+    VAR* quote_type;
+
+    switch (token_type) {
+        case S_QUOTE:
+            quote_type = &quote;
+            break;
+        case S_QUASIQUOTE:
+            quote_type = &quasiquote;
+            break;
+        case S_UNQUOTE:
+            quote_type = &unquote;
+            break;
+        case S_SPLICE:
+            quote_type = &splice;
+            break;
+    }
+    quoted_list = read_list(S_LIST,'(',')');
+    return append(form,insert(quote_type,quoted_list));
+}
+
+VAR* read_list(int type,char open, char close)
+{
+    LIST* form = NULL;
     VAR* var;
     int token_type;
 
     var = new_var();
-    form = NULL;
     token_type = lexer();
-    while (token_type != S_EOE && token_type != S_EOF && token_type != ')') {
+    while (token_type != S_EOE && token_type != S_EOF && token_type != close) {
         switch (token_type) {
             case '(':
-                form = append(form,read_list());
+                form = append(form,read_list(S_LIST,'(',')'));
+                break;
+            case '[':
+                form = append(form,read_list(S_ARRAY,'[',']'));
                 break;
             case S_QUOTE:
-                LIST* quoted_list = NULL;
-                LIST* elt = new_list();
-                VAR* quote_var = new_var();
-                var->type = S_VAR;
-                var->val.pval = strsave(lextok);
-                quoted_list = append(quoted_list,read_list());
-                elt->var = quote_var;
-                elt->next = quoted_list;
-                form = append(form,ext)
+            case S_QUASIQUOTE:
+            case S_UNQUOTE:
+            case S_SPLICE:
+                form = handle_quote(token_type,form);
                 break;
             default:
                 form = append(form,symbolise(token_type,lextok));
         }
         token_type = lexer();
     }
-    var->type = S_LIST;
+    var->type = type;
     var->val.lval = form;
     return var;
 }

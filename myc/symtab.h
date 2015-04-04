@@ -3,9 +3,9 @@
 struct s_list;
 
 union u_val {
+	char *pval;
 	int ival;
 	float fval;
-	char *pval;
     struct s_list *lval;
 };
 
@@ -34,7 +34,8 @@ VAR* symbolise(int,char*);
 LIST* new_list(void);
 VAR* new_var(void);
 LIST* append(LIST*,VAR*);
-VAR* read_list(void);
+VAR* read_list(int,char,char);
+VAR* insert(VAR*,VAR*);
 
 #define TRUE 1
 #define FALSE 0

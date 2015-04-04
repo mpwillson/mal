@@ -20,7 +20,7 @@ VAR* read(char* s)
     VAR *var;
     
     init_lexer(s);
-    var = read_list();
+    var = read_list(S_LIST,'(',')');
     var->type = S_ROOT;
     return var;
 }

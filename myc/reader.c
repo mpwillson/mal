@@ -103,7 +103,7 @@ int lexer(void)
 		}
 		lextok[i] = '\0';
 	}
-	else if (ch == '(' || ch == ')') {
+	else if (ch == '(' || ch == ')' || ch == '[' || ch == ']') {
 		lexsym = ch;
 		lextok[0] = ch; lextok[1] = '\0';
 	}
@@ -119,7 +119,27 @@ int lexer(void)
         lexsym = S_QUOTE;
         strcpy(lextok,"quote");
     }
-	else {
+    else if (ch == '`') {
+        lexsym = S_QUASIQUOTE;
+        strcpy(lextok,"quasiquote");
+    }
+    else if (ch == '~') {
+        ch = getlexchar();
+        if (ch == '@') {
+            lexsym = S_SPLICE;
+            strcpy(lextok,"splice-unquote");
+        }
+        else {
+            ungetlexchar();
+            lexsym = S_UNQUOTE;
+            strcpy(lextok,"unquote");
+        }
+    }
+    else if (ch == ';') {
+        lextok[0] = '\0';
+        lexsym = S_EOF;
+    }
+    else {
 		/* unrecognised token */
 		while (ch != '\n' && ch != EOF && i < LEXTOKSIZ) {
 			lextok[i++] = ch;
@@ -129,6 +149,5 @@ int lexer(void)
 		ungetlexchar();
 		lexsym = S_UNDEF;
 	}
-    printf("lexer: %d\n",lexsym);
     return lexsym;
 }

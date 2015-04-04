@@ -12,6 +12,11 @@
 #define S_ROOT 8 /* a list that is not a list */
 #define S_KEYWORD 9
 #define S_QUOTE 10
+#define S_QUASIQUOTE 11
+#define S_UNQUOTE 12
+#define S_SPLICE 13
+#define S_ARRAY 14
+
 
 #define LEXTOKSIZ 72
 #define LEXBUFSIZ 255
