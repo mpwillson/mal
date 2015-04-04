@@ -241,17 +241,22 @@ VAR* read_list(void)
     var = new_var();
     form = NULL;
     token_type = lexer();
-    while (token_type != S_EOE && token_type != ')') {
+    while (token_type != S_EOE && token_type != S_EOF && token_type != ')') {
         switch (token_type) {
             case '(':
                 form = append(form,read_list());
                 break;
             case S_QUOTE:
-                printf("quote\n");
-                form = append(form,symbolise(S_VAR,lextok));
-                printf("after quote append\n");
-                form = append(form,read_list());
-                break;=b
+                LIST* quoted_list = NULL;
+                LIST* elt = new_list();
+                VAR* quote_var = new_var();
+                var->type = S_VAR;
+                var->val.pval = strsave(lextok);
+                quoted_list = append(quoted_list,read_list());
+                elt->var = quote_var;
+                elt->next = quoted_list;
+                form = append(form,ext)
+                break;
             default:
                 form = append(form,symbolise(token_type,lextok));
         }
