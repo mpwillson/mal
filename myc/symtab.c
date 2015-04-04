@@ -300,9 +300,8 @@ LIST* handle_meta(LIST* form)
     VAR* object_list = read_list(S_LIST,'(',')');
     LIST* new = NULL;
     
-    new = append(new,&meta);
-    form = append(new,object_list);
-    form = append(new,meta_list);
+    form = append(new,insert(&meta,object_list));
+    form = append(form,meta_list);
     return form;
 }
 
