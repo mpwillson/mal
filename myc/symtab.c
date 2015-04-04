@@ -259,6 +259,10 @@ static VAR splice = {
     S_VAR,
     "splice-unquote"
 };
+static VAR deref = {
+    S_VAR,
+    "deref"
+};
 
 LIST* handle_quote(int token_type,LIST* form)
 {
@@ -277,6 +281,9 @@ LIST* handle_quote(int token_type,LIST* form)
             break;
         case S_SPLICE:
             quote_type = &splice;
+            break;
+        case S_DEREF:
+            quote_type = &deref;
             break;
     }
     quoted_list = read_list(S_LIST,'(',')');
@@ -299,10 +306,14 @@ VAR* read_list(int type,char open, char close)
             case '[':
                 form = append(form,read_list(S_ARRAY,'[',']'));
                 break;
+            case '{':
+                form = append(form,read_list(S_HASHMAP,'{','}'));
+                break;
             case S_QUOTE:
             case S_QUASIQUOTE:
             case S_UNQUOTE:
             case S_SPLICE:
+            case S_DEREF:
                 form = handle_quote(token_type,form);
                 break;
             default:

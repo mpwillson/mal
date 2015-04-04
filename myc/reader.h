@@ -16,7 +16,9 @@
 #define S_UNQUOTE 12
 #define S_SPLICE 13
 #define S_ARRAY 14
-
+#define S_HASHMAP 15
+#define S_META 16
+#define S_DEREF 17
 
 #define LEXTOKSIZ 72
 #define LEXBUFSIZ 255
@@ -25,3 +27,5 @@ extern char lextok[];
 
 extern int lexer(void);
 extern void init_lexer(char *s);
+extern char* list_open(int);
+extern char* list_close(int);

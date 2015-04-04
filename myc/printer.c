@@ -58,17 +58,16 @@ char* print_str(VAR* var)
         case S_ROOT:
         case S_LIST:
         case S_ARRAY:
+        case S_HASHMAP:
             elt = var->val.lval;
-            if (var->type == S_LIST) strcpy(buffer,"(");
-            if (var->type == S_ARRAY) strcpy(buffer,"[");
+            if (var->type != S_ROOT) strcat(buffer,list_open(var->type));
             while (elt != NULL) {
                 strcpy(tok,print_str(elt->var));
                 if (buffer[1] != '\0') strcat(buffer," ");
                 strcat(buffer,tok);
                 elt = elt->next;
             }
-            if (var->type == S_LIST) strcat(buffer,")");
-            if (var->type == S_ARRAY) strcat(buffer,"]");
+            if (var->type != S_ROOT) strcat(buffer,list_close(var->type));
             break;
         case S_INT:
             sprintf(buffer,"%d",var->val.ival);

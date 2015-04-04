@@ -52,7 +52,7 @@ void init_lexer(char *s)
 
 int issymbol(char ch)
 {
-    return (isalnum(ch) || (strchr("/!£$%^&*_-+=@<>?",ch) != NULL));
+    return (isalnum(ch) || (strchr("/!$%&*_-+=<>?",ch) != NULL));
 }
 
 int lexer(void)
@@ -103,7 +103,8 @@ int lexer(void)
 		}
 		lextok[i] = '\0';
 	}
-	else if (ch == '(' || ch == ')' || ch == '[' || ch == ']') {
+	else if (ch == '(' || ch == ')' || ch == '[' || ch == ']' ||
+             ch == '{' || ch == '}') {
 		lexsym = ch;
 		lextok[0] = ch; lextok[1] = '\0';
 	}
@@ -139,6 +140,10 @@ int lexer(void)
         lextok[0] = '\0';
         lexsym = S_EOF;
     }
+    else if (ch == '@') {
+        lexsym = S_DEREF;
+        strcpy(lextok,"deref");
+    }
     else {
 		/* unrecognised token */
 		while (ch != '\n' && ch != EOF && i < LEXTOKSIZ) {
@@ -150,4 +155,27 @@ int lexer(void)
 		lexsym = S_UNDEF;
 	}
     return lexsym;
+}
+
+char* list_open(int type)
+{
+    switch (type) {
+        case S_LIST:
+            return "(";
+        case S_ARRAY:
+            return "[";
+        case S_HASHMAP:
+            return "{";
+    }
+}
+char* list_close(int type)
+{
+    switch (type) {
+        case S_LIST:
+            return ")";
+        case S_ARRAY:
+            return "]";
+        case S_HASHMAP:
+            return "}";
+    }
 }
