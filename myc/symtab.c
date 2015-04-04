@@ -263,6 +263,10 @@ static VAR deref = {
     S_VAR,
     "deref"
 };
+static VAR meta = {
+    S_VAR,
+    "with-meta"
+};
 
 LIST* handle_quote(int token_type,LIST* form)
 {
@@ -290,6 +294,18 @@ LIST* handle_quote(int token_type,LIST* form)
     return append(form,insert(quote_type,quoted_list));
 }
 
+LIST* handle_meta(LIST* form)
+{
+    VAR* meta_list = read_list(S_HASHMAP,'{','}');
+    VAR* object_list = read_list(S_LIST,'(',')');
+    LIST* new = NULL;
+    
+    new = append(new,&meta);
+    form = append(new,object_list);
+    form = append(new,meta_list);
+    return form;
+}
+
 VAR* read_list(int type,char open, char close)
 {
     LIST* form = NULL;
@@ -315,6 +331,9 @@ VAR* read_list(int type,char open, char close)
             case S_SPLICE:
             case S_DEREF:
                 form = handle_quote(token_type,form);
+                break;
+            case S_META:
+                form = handle_meta(form);
                 break;
             default:
                 form = append(form,symbolise(token_type,lextok));

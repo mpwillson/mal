@@ -26,6 +26,7 @@
  *
  */
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -144,6 +145,10 @@ int lexer(void)
         lexsym = S_DEREF;
         strcpy(lextok,"deref");
     }
+    else if (ch == '^') {
+        lexsym = S_META;
+        strcpy(lextok,"with-meta");
+    }
     else {
 		/* unrecognised token */
 		while (ch != '\n' && ch != EOF && i < LEXTOKSIZ) {
@@ -167,6 +172,7 @@ char* list_open(int type)
         case S_HASHMAP:
             return "{";
     }
+    return "";
 }
 char* list_close(int type)
 {
@@ -178,4 +184,6 @@ char* list_close(int type)
         case S_HASHMAP:
             return "}";
     }
+    return "";
+    
 }
