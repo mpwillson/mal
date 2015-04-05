@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "reader.h"
 
 #define BUFSIZE 1024
@@ -36,18 +37,24 @@ char *stringify (char *s)
         if (*s == '"') {
             *p++ = '\\';
         }
+        else if (*s == '\n') {
+            *p++ = '\\';
+            *p++ = 'n';
+            *s++;
+            continue;
+        }
         *p++ = *s++;
     }
     *p = '\0';
     return buf;
 }
 
-char* print_str(VAR* var)
+char* print_str(VAR* var,bool print_readably)
 {
     LIST* elt;
     char tok[LEXTOKSIZ+1];
     char *buffer = (char *) malloc(BUFSIZE+1);
-    int first = TRUE;
+    bool first = true;
 
     buffer[0] = '\0';
     buffer[1] = '\0';
@@ -61,9 +68,9 @@ char* print_str(VAR* var)
             elt = var->val.lval;
             if (var->type != S_ROOT) strcat(buffer,list_open(var->type));
             while (elt != NULL) {
-                strcpy(tok,print_str(elt->var));
+                strcpy(tok,print_str(elt->var,true));
                 if (first) {
-                        first = FALSE;
+                        first = false;
                     }
                 else {
                     strcat(buffer," ");

@@ -1,6 +1,6 @@
 #ifndef PRINTER_H
 #define PRINTER_H
 
-char *print_str(VAR*);
+char *print_str(VAR*,bool);
 
 #endif

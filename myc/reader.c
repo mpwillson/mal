@@ -3,12 +3,6 @@
  *      reader - lexical scanning and reader for mal
  * 	
  * 	SYNOPSIS
- *      void init_lexer(char *buf);
- *          Initialise lexer input buffer.
- *          
- *      void lexer();
- *      	determine next token.  Global variable lexsym holds token
- *      	type, lextok holds token content
  *
  * 	DESCRIPTION
  *
@@ -21,7 +15,7 @@
  *      
  * 	MODIFICATION HISTORY
  * 	Mnemonic		Rel	Date	Who
- *	reader          1.0 020924  mpw
+ *	reader          1.0 150405  mpw
  *		Created.
  *
  */
@@ -91,9 +85,14 @@ int lexer(void)
 	else if (ch == '"') {
 		ch = getlexchar();
 		while (ch != '\n' && ch != EOF && ch != '"' && i < LEXTOKSIZ) {
-			if (ch == '\\') ch = getlexchar();
-			lextok[i++] = ch;
-			ch = getlexchar();
+			if (ch == '\\') {
+                ch = getlexchar();
+                if (ch == 'n') {
+                    ch = '\n';
+                }
+            }
+            lextok[i++] = ch;
+            ch = getlexchar();
 		}
 		if (ch != '"') {
 			ungetlexchar();
@@ -174,6 +173,7 @@ char* list_open(int type)
     }
     return "";
 }
+
 char* list_close(int type)
 {
     switch (type) {
@@ -254,7 +254,6 @@ VAR* insert(VAR* var, VAR* list)
     list->val.lval = elt;
     return list;
 }
-
 
 LIST* append(LIST* list,VAR* var)
 {

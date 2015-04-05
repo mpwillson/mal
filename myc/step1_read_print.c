@@ -31,9 +31,8 @@ VAR* eval(VAR* var)
 
 char* print(VAR* var)
 {
-    return print_str(var);
+    return print_str(var,true);
 }
-
 
 char* rep(char* s)
 {
@@ -56,6 +55,5 @@ int main(void)
         }
     }
     fprintf(stdout,"\n");
-    
     return 0;
 }
