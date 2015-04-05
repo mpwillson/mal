@@ -1,4 +1,4 @@
-/* reader.h - lexical analysis header file */
+/* reader.h - mal reader header file */
 
 #define S_UNDEF -1
 #define S_INT 0
@@ -23,9 +23,47 @@
 #define LEXTOKSIZ 72
 #define LEXBUFSIZ 255
 
+
+struct s_list;
+
+union u_val {
+	char *pval;
+	int ival;
+	float fval;
+    struct s_list *lval;
+};
+
+struct s_var {
+	int type;
+	union u_val val;
+};
+
+typedef struct s_var VAR;
+
+struct s_list {
+    VAR *var;
+    struct s_list *next;
+};
+
+typedef struct s_list LIST;
+
+
 extern char lextok[];
 
 extern int lexer(void);
 extern void init_lexer(char *s);
 extern char* list_open(int);
 extern char* list_close(int);
+
+/* function prototypes */
+
+VAR* read_atom(int,char*);
+LIST* new_elt(void);
+VAR* new_var(void);
+LIST* append(LIST*,VAR*);
+VAR* read_list(int,char);
+VAR* read_form(int);
+VAR* insert(VAR*,VAR*);
+
+#define TRUE 1
+#define FALSE 0

@@ -1,6 +1,6 @@
 /*
  * 	NAME
- *      reader - lexical scanning for mal
+ *      reader - lexical scanning and reader for mal
  * 	
  * 	SYNOPSIS
  *      void init_lexer(char *buf);
@@ -17,11 +17,11 @@
  * 		Single character operators stand for themselves as
  * 		tokens. Other tokens are assigned special symbols, beginning
  * 		with S_. 
- *      TBD - place all lexical scanning elements into separate functions
  *
+ *      
  * 	MODIFICATION HISTORY
  * 	Mnemonic		Rel	Date	Who
- *	lexer           1.0 020924  mpw
+ *	reader          1.0 020924  mpw
  *		Created.
  *
  */
@@ -186,4 +186,201 @@ char* list_close(int type)
     }
     return "";
     
+}
+
+char *strsave(char *s)
+{
+	char *p;
+
+	p = (char *) malloc(strlen(s)+1);
+	if (p != NULL) 	strcpy(p,s);
+	return p;
+}
+
+
+/* Return atom, created from type and value */
+VAR* read_atom(int type,char *s)
+//VAR *symbolise(int type, char *s)
+{
+    VAR *new = new_var();
+
+    new->type = type;
+    switch (type) {
+        case S_INT: 
+            new->val.ival = strtol(s,NULL,10);
+            break;
+        case S_FLOAT:
+            new->val.fval = strtod(s,NULL);
+            break;
+        case S_VAR:
+        case S_STR:
+        case S_KEYWORD:
+            new->val.pval = strsave(s);
+            break;
+    }   
+    return new;
+}
+
+LIST* new_elt() {
+    LIST* elt;
+    
+    elt = (LIST *) malloc(sizeof(LIST));
+    if (elt == NULL) {
+        mal_error("out of memory at new_elt.");
+    }
+    elt->var = NULL;
+    elt->next = NULL;
+    return elt;
+}
+
+VAR* new_var() {
+    VAR* var;
+    
+    var = (VAR *) malloc(sizeof(VAR));
+    if (var == NULL)  {
+        mal_error("out of memory at new_var.");
+    }
+    var->type = S_UNDEF;
+    var->val.lval = NULL;
+    return var;
+}
+
+VAR* insert(VAR* var, VAR* list)
+{
+    LIST* elt = new_elt();
+
+    elt->var = var;
+    elt->next = list->val.lval;
+    list->val.lval = elt;
+    return list;
+}
+
+
+LIST* append(LIST* list,VAR* var)
+{
+    LIST *elt,*current;
+
+    elt = new_elt();
+    elt->var = var;
+    if (list == NULL) {
+        return elt;
+    }
+    else {
+        current = list;
+        while (current->next != NULL) current = current->next;
+        current->next = elt;
+    }
+    return list;
+}
+
+static VAR quote = {
+    S_VAR,
+    "quote"
+};
+static VAR quasiquote = {
+    S_VAR,
+    "quasiquote"
+};
+static VAR unquote = {
+    S_VAR,
+    "unquote"
+};
+static VAR splice = {
+    S_VAR,
+    "splice-unquote"
+};
+static VAR deref = {
+    S_VAR,
+    "deref"
+};
+static VAR meta = {
+    S_VAR,
+    "with-meta"
+};
+
+VAR* handle_quote(int token_type)
+{
+    VAR* quote_type;
+
+    switch (token_type) {
+        case S_QUOTE:
+            quote_type = &quote;
+            break;
+        case S_QUASIQUOTE:
+            quote_type = &quasiquote;
+            break;
+        case S_UNQUOTE:
+            quote_type = &unquote;
+            break;
+        case S_SPLICE:
+            quote_type = &splice;
+            break;
+        case S_DEREF:
+            quote_type = &deref;
+            break;
+    }
+    return insert(quote_type,read_list(S_LIST,')'));
+}
+
+VAR* handle_meta()
+{
+    VAR* meta_form = read_form(lexer());
+    VAR* object_form = read_form(lexer());
+    LIST* new = NULL;
+    VAR* var = new_var();
+
+    new = append(new,&meta);
+    new = append(new,object_form);
+    new = append(new,meta_form);
+    var->type = S_LIST;
+    var->val.lval = new;
+    return var;
+}
+
+VAR* read_list(int type,char close)
+{
+    LIST* list = NULL;
+    VAR* var = new_var();
+    int token_type;
+
+    token_type = lexer();
+    while (token_type != S_EOE && token_type != S_EOF && token_type != close) {
+        list = append(list,read_form(token_type));
+        token_type = lexer();
+    }
+    var->type = type;
+    var->val.lval = list;
+    return var;
+}
+
+VAR* read_form(int token_type)
+{
+    LIST* form = NULL;
+    VAR* var;
+
+    var = new_var();
+    switch (token_type) {
+        case '(':
+            var = read_list(S_LIST,')');
+            break;
+        case '[':
+            var = read_list(S_ARRAY,']');
+            break;
+        case '{':
+            var = read_list(S_HASHMAP,'}');
+            break;
+        case S_QUOTE:
+        case S_QUASIQUOTE:
+        case S_UNQUOTE:
+        case S_SPLICE:
+        case S_DEREF:
+            var = handle_quote(token_type);
+            break;
+        case S_META:
+            var = handle_meta();
+            break;
+        default:
+            var = read_atom(token_type,lextok);
+    }       
+    return var;
 }

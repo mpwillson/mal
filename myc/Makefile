@@ -1,5 +1,5 @@
 TARGET=step1_read_print
-S1_OBJS=step1_read_print.o reader.o symtab.o printer.o
+S1_OBJS=step1_read_print.o reader.o printer.o
 
 ${TARGET}: $(S1_OBJS)
 	cc -g -o $@ $^

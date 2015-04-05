@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #include "reader.h"
-#include "symtab.h"
 #include "printer.h"
 
 #define BUFSIZE 1024
@@ -20,7 +19,7 @@ VAR* read(char* s)
     VAR *var;
     
     init_lexer(s);
-    var = read_list(S_LIST,'(',')');
+    var = read_list(S_LIST,')');
     var->type = S_ROOT;
     return var;
 }

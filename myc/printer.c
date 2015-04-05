@@ -1,6 +1,6 @@
 /*
  * 	NAME
- *
+ *      printer - printer functions for mal
  *
  * 	SYNOPSIS
  *
@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "reader.h"
-#include "symtab.h"
 
 #define BUFSIZE 1024
 
@@ -43,12 +42,12 @@ char *stringify (char *s)
     return buf;
 }
 
-
 char* print_str(VAR* var)
 {
     LIST* elt;
     char tok[LEXTOKSIZ+1];
     char *buffer = (char *) malloc(BUFSIZE+1);
+    int first = TRUE;
 
     buffer[0] = '\0';
     buffer[1] = '\0';
@@ -63,7 +62,12 @@ char* print_str(VAR* var)
             if (var->type != S_ROOT) strcat(buffer,list_open(var->type));
             while (elt != NULL) {
                 strcpy(tok,print_str(elt->var));
-                if (buffer[1] != '\0') strcat(buffer," ");
+                if (first) {
+                        first = FALSE;
+                    }
+                else {
+                    strcat(buffer," ");
+                }
                 strcat(buffer,tok);
                 elt = elt->next;
             }
