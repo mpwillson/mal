@@ -294,14 +294,24 @@ LIST* handle_quote(int token_type,LIST* form)
     return append(form,insert(quote_type,quoted_list));
 }
 
+char* print_str(VAR*);
+
 LIST* handle_meta(LIST* form)
 {
     VAR* meta_list = read_list(S_HASHMAP,'{','}');
     VAR* object_list = read_list(S_LIST,'(',')');
     LIST* new = NULL;
+    VAR* var = new_var();
+
+    printf("%s;%s\n",print_str(meta_list),print_str(object_list));
     
-    form = append(new,insert(&meta,object_list));
-    form = append(form,meta_list);
+    new = append(new,&meta);
+    new = append(new,object_list);
+    new = append(new,meta_list);
+    var->type = S_LIST;
+    var->val.lval = new;
+    form = append(form,var);
+    
     return form;
 }
 
