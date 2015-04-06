@@ -10,6 +10,7 @@ extern int lexer(void);
 extern void init_lexer(char *s);
 extern char* list_open(int);
 extern char* list_close(int);
+char* strsave(char*);
 VAR* read_atom(int,char*);
 LIST* new_elt(void);
 VAR* new_var(void);

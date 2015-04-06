@@ -6,6 +6,7 @@
 #include "mal.h"
 #include "reader.h"
 #include "printer.h"
+#include "env.h"
 
 #define BUFSIZE 1024
 
@@ -45,6 +46,14 @@ VAR* var_add(LIST* list)
 
 VAR* eval(VAR* var)
 {
+    ENV* env = new_env(101);
+    VAR* fun = new_var();
+    
+    if (env_put(env,"ROOT",var)) {
+        env_dump(env);
+        var = env_get(env,"ROOT");
+        if (var) printf("%s\n",print_str(var,true));
+    }
     return var;
 }
 
