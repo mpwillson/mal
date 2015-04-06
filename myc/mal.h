@@ -45,6 +45,9 @@ struct s_list {
 
 typedef struct s_list LIST;
 
+/* declaration for functions that do stuff to two VARs */
+typedef VAR*(*FUN)(VAR*,VAR*);
+
 /* function prototypes */
 void mal_error(char*);
 

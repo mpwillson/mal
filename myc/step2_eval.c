@@ -10,7 +10,6 @@
 
 #define BUFSIZE 1024
 
-VAR* eval(VAR*,ENV*);
 
 void mal_error(char *msg)
 {
@@ -28,23 +27,33 @@ VAR* read(char* s)
     return var;
 }
 
-VAR* var_add(LIST* list)
+VAR* reduce(FUN fun,VAR* seed,LIST* list)
 {
     VAR* var;
     LIST* elt;
-    int total = 0;
 
     elt = list;
     while (elt != NULL) {
         var = elt->var;
-        if (var->type == S_INT) total += var->val.ival;
+        seed = fun(seed,elt->var);
         elt = elt->next;
     }
+    return seed;
+}
+
+VAR* var_add(VAR* sum,VAR* add)
+{
+    VAR* var;
+
+    /* TBD: if add value is a float, covert seed to float, if an int */
     var = new_var();
     var->type = S_INT;
-    var->val.ival = total;
+    var->val.ival = 0;
     return var;
 }
+
+/* forward declare of eval for eval_ast */
+VAR* eval(VAR*,ENV*);
 
 VAR* eval_ast(VAR* ast, ENV* env)
 {
@@ -84,7 +93,7 @@ VAR* eval(VAR* var,ENV* env)
     if (ast->type == S_LIST) {
         eval_list = eval_ast(ast,env);
         printf("eval: should apply: %s\n",print_str(eval_list,true));
-        eval_list = var_add((eval_list->val.lval)->next);
+        //eval_list = var_add((eval_list->val.lval)->next);
         return eval_list;
     }
     else {
