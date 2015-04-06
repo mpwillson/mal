@@ -73,7 +73,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
 
 VAR* eval(VAR* var,ENV* env)
 {
-    VAR* ast = new_var();
+    VAR* ast = var;
     VAR* eval_list;
     LIST* elt;
 
@@ -84,6 +84,8 @@ VAR* eval(VAR* var,ENV* env)
     if (ast->type == S_LIST) {
         eval_list = eval_ast(ast,env);
         printf("eval: should apply: %s\n",print_str(eval_list,true));
+        eval_list = var_add((eval_list->val.lval)->next);
+        return eval_list;
     }
     else {
         return eval_ast(ast,env);
