@@ -22,7 +22,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+
+#include "mal.h"
 #include "reader.h"
+#include "printer.h"
 
 #define BUFSIZE 1024
 
