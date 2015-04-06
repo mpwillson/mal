@@ -10,6 +10,8 @@
 
 #define BUFSIZE 1024
 
+VAR* eval(VAR*,ENV*);
+
 void mal_error(char *msg)
 {
     fprintf(stderr,"mal: %s\n",msg);
@@ -44,15 +46,47 @@ VAR* var_add(LIST* list)
     return var;
 }
 
-VAR* eval(VAR* var)
+VAR* eval_ast(VAR* ast, ENV* env)
 {
-    ENV* env = new_env(101);
-    VAR* fun = new_var();
+    VAR* var;
+    VAR* list_var = new_var();
+    LIST* list = NULL;
+    LIST* elt = new_elt();
     
-    if (env_put(env,"ROOT",var)) {
-        env_dump(env);
-        var = env_get(env,"ROOT");
-        if (var) printf("%s\n",print_str(var,true));
+    if (ast->type == S_VAR) {
+        var = env_get(env,ast->val.pval);
+        if (var == NULL) mal_error("symbol not found in environment");
+        return var;
+    }
+    else if (ast->type == S_LIST) {
+        elt = ast->val.lval;
+        while (elt != NULL) {
+            list = append(list,eval(elt->var,env));
+            elt = elt->next;
+        }
+        list_var->type = S_LIST;
+        list_var->val.lval = list;
+        return list_var;
+    }
+    return ast;
+}
+
+VAR* eval(VAR* var,ENV* env)
+{
+    VAR* ast = new_var();
+    VAR* eval_list;
+    LIST* elt;
+
+    if (ast->type == S_ROOT) {
+        elt = ast->val.lval;
+        ast = elt->var;
+    }
+    if (ast->type == S_LIST) {
+        eval_list = eval_ast(ast,env);
+        printf("eval: should apply: %s\n",print_str(eval_list,true));
+    }
+    else {
+        return eval_ast(ast,env);
     }
     return var;
 }
@@ -64,7 +98,13 @@ char* print(VAR* var)
 
 char* rep(char* s)
 {
-    return print(eval(read(s)));
+    ENV* env = new_env(101);
+    VAR* var = new_var();
+
+    var->type = S_VAR;
+    var->val.pval = "+";
+    env_put(env,"+",var);
+    return print(eval(read(s),env));
 }
 
 int main(void)

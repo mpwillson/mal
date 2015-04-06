@@ -48,5 +48,4 @@ typedef struct s_list LIST;
 /* function prototypes */
 void mal_error(char*);
 
-
 #endif
