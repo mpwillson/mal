@@ -22,7 +22,13 @@
 #define S_META 16
 #define S_DEREF 17
 
+/* Forward references */
 struct s_list;
+struct s_var;
+typedef struct s_var VAR;
+typedef struct s_list LIST;
+/* declaration for functions that do stuff to two VARs */
+typedef VAR*(*FUN)(VAR*,VAR*);
 
 union u_val {
 	char *pval;
@@ -33,20 +39,14 @@ union u_val {
 
 struct s_var {
 	int type;
+    FUN function;
 	union u_val val;
 };
-
-typedef struct s_var VAR;
 
 struct s_list {
     VAR *var;
     struct s_list *next;
 };
-
-typedef struct s_list LIST;
-
-/* declaration for functions that do stuff to two VARs */
-typedef VAR*(*FUN)(VAR*,VAR*);
 
 /* function prototypes */
 void mal_error(char*);

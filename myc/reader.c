@@ -274,28 +274,22 @@ LIST* append(LIST* list,VAR* var)
 }
 
 static VAR quote = {
-    S_VAR,
-    "quote"
+    S_VAR,NULL,"quote"
 };
 static VAR quasiquote = {
-    S_VAR,
-    "quasiquote"
+    S_VAR,NULL,"quasiquote"
 };
 static VAR unquote = {
-    S_VAR,
-    "unquote"
+    S_VAR,NULL,"unquote"
 };
 static VAR splice = {
-    S_VAR,
-    "splice-unquote"
+    S_VAR,NULL,"splice-unquote"
 };
 static VAR deref = {
-    S_VAR,
-    "deref"
+    S_VAR,NULL,"deref"
 };
 static VAR meta = {
-    S_VAR,
-    "with-meta"
+    S_VAR,NULL,"with-meta"
 };
 
 VAR* handle_quote(int token_type)

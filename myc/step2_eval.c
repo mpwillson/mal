@@ -27,7 +27,7 @@ VAR* read(char* s)
     return var;
 }
 
-VAR* reduce(FUN fun,VAR* seed,LIST* list)
+VAR* reduce(FUN fun,VAR* result,LIST* list)
 {
     VAR* var;
     LIST* elt;
@@ -35,21 +35,37 @@ VAR* reduce(FUN fun,VAR* seed,LIST* list)
     elt = list;
     while (elt != NULL) {
         var = elt->var;
-        seed = fun(seed,elt->var);
+        result = fun(result,elt->var);
         elt = elt->next;
     }
-    return seed;
+    return result;
 }
 
 VAR* var_add(VAR* sum,VAR* add)
 {
     VAR* var;
 
-    /* TBD: if add value is a float, covert seed to float, if an int */
     var = new_var();
-    var->type = S_INT;
-    var->val.ival = 0;
-    return var;
+    if (sum->type == S_FLOAT) {
+        switch (add->type) {
+            case S_INT:
+                sum->val.fval += add->val.ival;
+                break;
+            case S_FLOAT:
+                sum->val.fval += add->val.fval;
+                break;
+        }
+    }
+    else { /*assume sum type is S_INT */
+        if (add->type == S_FLOAT) {
+            sum->type = S_FLOAT;
+            sum->val.fval = sum->val.ival + add->val.fval;
+        }
+        else {
+            sum->val.ival += add->val.ival;
+        }
+    }
+    return sum;
 }
 
 /* forward declare of eval for eval_ast */
@@ -85,15 +101,18 @@ VAR* eval(VAR* var,ENV* env)
     VAR* ast = var;
     VAR* eval_list;
     LIST* elt;
-
+    VAR* result = new_var();
+    
+    result->type = S_INT;
+    result->val.ival = 0;
     if (ast->type == S_ROOT) {
         elt = ast->val.lval;
         ast = elt->var;
     }
     if (ast->type == S_LIST) {
         eval_list = eval_ast(ast,env);
-        printf("eval: should apply: %s\n",print_str(eval_list,true));
-        //eval_list = var_add((eval_list->val.lval)->next);
+        eval_list = reduce((eval_list->val.lval)->var->function,result,
+                           (eval_list->val.lval)->next);
         return eval_list;
     }
     else {
@@ -114,6 +133,7 @@ char* rep(char* s)
 
     var->type = S_VAR;
     var->val.pval = "+";
+    var->function = var_add;
     env_put(env,"+",var);
     return print(eval(read(s),env));
 }
