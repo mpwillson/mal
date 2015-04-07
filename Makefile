@@ -52,6 +52,7 @@ STEP_TEST_FILES = $(strip $(wildcard $(1)/tests/$($(2)).mal) $(wildcard tests/$(
 
 bash_STEP_TO_PROG =    bash/$($(1)).sh
 c_STEP_TO_PROG =       c/$($(1))
+myc_STEP_TO_PROG =     c/$($(1))
 clojure_STEP_TO_PROG = clojure/src/$($(1)).clj
 coffee_STEP_TO_PROG =  coffee/$($(1)).coffee
 cs_STEP_TO_PROG =      cs/$($(1)).exe
@@ -84,6 +85,7 @@ SPACE = $(noop) $(noop)
 
 bash_RUNSTEP =    bash ../$(2) $(3)
 c_RUNSTEP =       ../$(2) $(3)
+myc_RUNSTEP =       ../$(2) $(3)
 clojure_RUNSTEP = lein with-profile +$(1) trampoline run $(3)
 coffee_RUNSTEP =  coffee ../$(2) $(3)
 cs_RUNSTEP =      mono ../$(2) --raw $(3)
