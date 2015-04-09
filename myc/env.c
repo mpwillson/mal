@@ -99,8 +99,9 @@ void env_dump(ENV* env)
     for (i=0;i<env->size;i++) {
         sp = env->sym[i];
         if (sp != NULL) {
-            printf("%s: type %d, value: %s\n",sp->name,sp->value->type,
-                   print_str(sp->value,true));
+            printf("[%d] %s: type %d, value: %s, fun: %x\n",
+                   i,sp->name,sp->value->type,print_str(sp->value,true),
+                   sp->value->function);
         }
     }        
 }

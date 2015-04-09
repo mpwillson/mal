@@ -17,10 +17,14 @@
 #define S_QUASIQUOTE 11
 #define S_UNQUOTE 12
 #define S_SPLICE 13
-#define S_ARRAY 14
+#define S_VECTOR 14
 #define S_HASHMAP 15
 #define S_META 16
 #define S_DEREF 17
+#define S_ERROR 18
+
+#define list_type(t) (t == S_ROOT ||t == S_LIST || t == S_VECTOR || \
+                      t == S_HASHMAP)
 
 /* Forward references */
 struct s_list;
@@ -49,6 +53,6 @@ struct s_list {
 };
 
 /* function prototypes */
-void mal_error(char*);
+char* mal_error(const char *fmt, ...);
 
 #endif

@@ -54,7 +54,7 @@ char *stringify (char *s)
 
 char* print_str(VAR* var,bool print_readably)
 {
-    LIST* elt;
+    LIST* elt, *oelt;
     char tok[LEXTOKSIZ+1];
     char *buffer = (char *) malloc(BUFSIZE+1);
     bool first = true;
@@ -66,7 +66,7 @@ char* print_str(VAR* var,bool print_readably)
     switch (var->type) {
         case S_ROOT:
         case S_LIST:
-        case S_ARRAY:
+        case S_VECTOR:
         case S_HASHMAP:
             elt = var->val.lval;
             if (var->type != S_ROOT) strcat(buffer,list_open(var->type));
@@ -99,6 +99,9 @@ char* print_str(VAR* var,bool print_readably)
             sprintf(buffer,":%s",var->val.pval);
             break;
         case S_EOF:
+            break;
+        case S_ERROR:
+            sprintf(buffer,"error: *%s.",var->val.pval);
             break;
         default:
             sprintf(buffer,"mal: unhandled type: %d",var->type);

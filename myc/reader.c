@@ -167,7 +167,7 @@ char* list_open(int type)
     switch (type) {
         case S_LIST:
             return "(";
-        case S_ARRAY:
+        case S_VECTOR:
             return "[";
         case S_HASHMAP:
             return "{";
@@ -180,7 +180,7 @@ char* list_close(int type)
     switch (type) {
         case S_LIST:
             return ")";
-        case S_ARRAY:
+        case S_VECTOR:
             return "]";
         case S_HASHMAP:
             return "}";
@@ -295,7 +295,8 @@ static VAR meta = {
 VAR* handle_quote(int token_type)
 {
     VAR* quote_type;
-
+    VAR* list;
+    
     switch (token_type) {
         case S_QUOTE:
             quote_type = &quote;
@@ -313,7 +314,14 @@ VAR* handle_quote(int token_type)
             quote_type = &deref;
             break;
     }
-    return insert(quote_type,read_list(S_LIST,')'));
+    list = read_list(S_LIST,')');
+    if (list->type == S_ERROR) {
+        return list;
+    }
+    else {
+        return insert(quote_type,list);
+    }
+    
 }
 
 VAR* handle_meta()
@@ -323,6 +331,8 @@ VAR* handle_meta()
     LIST* new = NULL;
     VAR* var = new_var();
 
+    if (meta_form->type == S_ERROR) return meta_form;
+    if (object_form->type == S_ERROR) return object_form;
     new = append(new,&meta);
     new = append(new,object_form);
     new = append(new,meta_form);
@@ -342,8 +352,15 @@ VAR* read_list(int type,char close)
         list = append(list,read_form(token_type));
         token_type = lexer();
     }
-    var->type = type;
-    var->val.lval = list;
+    if (type != S_ROOT && token_type != close) {
+        var->type = S_ERROR;
+        var->val.pval = mal_error("terminating list character '%c' expected",
+                                  close);
+    }
+    else {
+        var->type = type;
+        var->val.lval = list;
+    }
     return var;
 }
 
@@ -358,7 +375,7 @@ VAR* read_form(int token_type)
             var = read_list(S_LIST,')');
             break;
         case '[':
-            var = read_list(S_ARRAY,']');
+            var = read_list(S_VECTOR,']');
             break;
         case '{':
             var = read_list(S_HASHMAP,'}');
@@ -372,6 +389,10 @@ VAR* read_form(int token_type)
             break;
         case S_META:
             var = handle_meta();
+            break;
+        case S_USTR:
+            var->type = S_ERROR;
+            var->val.pval = mal_error("unterminated string");
             break;
         default:
             var = read_atom(token_type,lextok);
