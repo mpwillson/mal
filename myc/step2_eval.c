@@ -13,6 +13,9 @@
 
 static char errmsg[BUFSIZE];
 
+/* For error returns */
+static VAR error = {S_ERROR,NULL,NULL};
+    
 char* mal_error(const char *fmt, ...)
 {
     va_list ap;
@@ -131,13 +134,12 @@ VAR* eval_ast(VAR* ast, ENV* env)
     if (ast->type == S_VAR) {
         var = env_get(env,ast->val.pval);
         if (var == NULL) {
-            list_var->type = S_ERROR;
-            list_var->val.pval = mal_error("'%s' not found",ast->val.pval);
-            return list_var;
+            error.val.pval = mal_error("'%s' not found",ast->val.pval);
+            return &error;
         }
         return var;
     }
-    else if (list_type(ast->type) || ast->type == S_ROOT) { 
+    else if (list_type(ast->type)) { 
         elt = ast->val.lval;
         while (elt != NULL) {
             evaled_var = eval(elt->var,env);
@@ -170,10 +172,10 @@ VAR* eval(VAR* ast,ENV* env)
                 eval_list = arith(elt->var->function,result,elt->next);
             }
             else {
-                eval_list->type = S_ERROR;
-                eval_list->val.pval =
-                    mal_error("%s not callable.",
+                error.val.pval =
+                    mal_error("'%s' not callable",
                               print_str((eval_list->val.lval)->var,true));
+                return &error;
             }   
         }
         return eval_list;

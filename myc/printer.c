@@ -101,7 +101,7 @@ char* print_str(VAR* var,bool print_readably)
         case S_EOF:
             break;
         case S_ERROR:
-            sprintf(buffer,"error: *%s.",var->val.pval);
+            sprintf(buffer,"error: %s.",var->val.pval);
             break;
         default:
             sprintf(buffer,"mal: unhandled type: %d",var->type);
