@@ -23,7 +23,9 @@
 #define S_DEREF 17
 #define S_ERROR 18
 
-#define list_type(t) (t == S_ROOT ||t == S_LIST || t == S_VECTOR || \
+#define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
+                      t == S_HASHMAP)
+#define isstr(t) (t == S_STR || t == S_VAR || t == S_KEYWORD || \
                       t == S_HASHMAP)
 
 /* Forward references */
