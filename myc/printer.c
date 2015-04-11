@@ -92,7 +92,7 @@ char* print_str(VAR* var,bool print_readably)
         case S_STR:
             sprintf(buffer,"\"%s\"",stringify(var->val.pval));
             break;
-        case S_VAR:
+        case S_SYM:
             sprintf(buffer,"%s",var->val.pval);
             break;
         case S_KEYWORD:

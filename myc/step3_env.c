@@ -26,9 +26,28 @@ char* mal_error(const char *fmt, ...)
     return errmsg;
 }
 
+void free_var(VAR* var)
+{
+    if (isstr(var->type)) {
+        free(var->val.pval);
+    }
+    else if (islist(var->type)) {
+        free_list(var->val.lval);
+    }
+    free(var);
+}
+
 void free_list(LIST* list)
 {
-    
+    LIST* elt, *last_elt;
+
+    elt= list;
+    while (elt != NULL) {
+        last_elt = elt;
+        free_var(elt->var);
+        elt = elt->next;
+        free(last_elt);
+    }
 }
 
 int length(LIST* list)
@@ -136,7 +155,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
     LIST* list = NULL;
     LIST* elt;
 
-    if (ast->type == S_VAR) {
+    if (ast->type == S_SYM) {
         var = env_get(env,ast->val.pval);
         if (var == NULL) {
             error.val.pval = mal_error("'%s' not found",ast->val.pval);
@@ -166,10 +185,43 @@ VAR* eval_ast(VAR* ast, ENV* env)
 VAR* eval(VAR* ast,ENV* env)
 {
     VAR* eval_list;
-    LIST* elt;
+    LIST* elt,*env_elt;
     VAR* result = new_var();
+    ENV* new;
 
     if (ast->type == S_LIST) {
+        elt = ast->val.lval;
+        if (strcmp(elt->var->val.pval,"def!") == 0) {
+            elt = elt->next;
+            eval_list =  eval(elt->next->var,env);
+            env_put(env,elt->var->val.pval,eval_list);
+            return eval_list;
+        }
+        else if (strcmp(elt->var->val.pval,"let*") == 0) {
+            new = new_env(101,env);
+            elt = elt->next;
+            if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
+                env_elt = elt->var->val.lval;
+                while (env_elt != NULL) {
+                    eval_list = eval(env_elt->next->var,new);
+                    env_put(new,env_elt->var->val.pval,eval_list);
+                    env_elt = env_elt->next->next;
+                }
+            }
+            else {
+                error.val.pval = mal_error("list expected");
+                return &error;
+            }
+            if (elt->next != NULL) {
+                eval_list = eval(elt->next->var,new);
+                env_free(new);
+            }
+            else { /* TBD: should return nil, I think */
+                error.val.pval = mal_error("expression expected");
+                return &error;
+            }
+            return eval_list;
+        }
         eval_list = eval_ast(ast,env);
         if (eval_list->type != S_ERROR) {
             elt = eval_list->val.lval;
@@ -178,7 +230,8 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else {
                 error.val.pval =
-                    mal_error("'%s' not callable",print_str(elt->var,true));
+                    mal_error("'%s' not callable",
+                              print_str(elt->var,true));
                 return &error;
             }   
         }
@@ -195,21 +248,18 @@ char* print(VAR* var)
 }
 VAR arith_op[] =
 {
-    {S_VAR,var_plus,"+"},
-    {S_VAR,var_minus,"-"},
-    {S_VAR,var_mul,"*"},
-    {S_VAR,var_div,"/"},
+    {S_SYM,var_plus,"+"},
+    {S_SYM,var_minus,"-"},
+    {S_SYM,var_mul,"*"},
+    {S_SYM,var_div,"/"},
 };
         
-char* rep(char* s)
+char* rep(char* s,ENV* env)
 {
-    ENV* env = new_env(101,NULL);
-    int i;
-    
-    for (i=0;i<(sizeof(arith_op)/sizeof(VAR));i++) {
-        env_put(env,arith_op[i].val.pval,arith_op+i);
-    }
-    return print(eval(read(s),env));
+    char* output;
+
+    output = print(eval(read(s),env));
+    return output;
 }
 
 int main(void)
@@ -217,16 +267,27 @@ int main(void)
     char buf[BUFSIZE+1];
     char* bufread;
     bool at_eof = false;
-
+    ENV* env = new_env(101,NULL);
+    int i;
+    VAR* var;
+    
+    for (i=0;i<(sizeof(arith_op)/sizeof(VAR));i++) {
+        var = new_var();
+        var->type = S_SYM;
+        var->function = arith_op[i].function;
+        var->val.pval = strsave(arith_op[i].val.pval);
+        env_put(env,strsave(arith_op[i].val.pval),var);
+    }
     while (!at_eof) {
         fprintf(stdout,"user> ");
         fflush(stdout);
         bufread = fgets(buf,BUFSIZE,stdin);
         at_eof = feof(stdin) || bufread == NULL;
         if (bufread) {
-            fprintf(stdout,"%s\n",rep(buf));
+            fprintf(stdout,"%s\n",rep(buf,env));
         }
     }
+    env_free(env);
     fprintf(stdout,"\n");
     return 0;
 }

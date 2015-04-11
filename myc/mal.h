@@ -7,7 +7,7 @@
 #define S_EOE 1
 #define S_EOF 2
 #define S_STR 3
-#define S_VAR 4
+#define S_SYM 4
 #define S_USTR 5 /* unterminated string */
 #define S_FLOAT 6
 #define S_LIST 7
@@ -25,7 +25,7 @@
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
                       t == S_HASHMAP)
-#define isstr(t) (t == S_STR || t == S_VAR || t == S_KEYWORD || \
+#define isstr(t) (t == S_STR || t == S_SYM || t == S_KEYWORD || \
                       t == S_HASHMAP)
 
 /* Forward references */
@@ -56,5 +56,7 @@ struct s_list {
 
 /* function prototypes */
 char* mal_error(const char *fmt, ...);
+void free_var(VAR*);
+void free_list(LIST*);
 
 #endif

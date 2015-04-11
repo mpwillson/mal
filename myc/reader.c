@@ -74,7 +74,7 @@ int lexer(void)
             ch = getlexchar();
         }
         else {
-            lexsym = S_VAR;
+            lexsym = S_SYM;
         }
         while (issymbol(ch) && i<LEXTOKSIZ) {
 			lextok[i++] = ch;
@@ -213,7 +213,7 @@ VAR* read_atom(int type,char *s)
         case S_FLOAT:
             new->val.fval = strtod(s,NULL);
             break;
-        case S_VAR:
+        case S_SYM:
         case S_STR:
         case S_KEYWORD:
             new->val.pval = strsave(s);
@@ -274,22 +274,22 @@ LIST* append(LIST* list,VAR* var)
 }
 
 static VAR quote = {
-    S_VAR,NULL,"quote"
+    S_SYM,NULL,"quote"
 };
 static VAR quasiquote = {
-    S_VAR,NULL,"quasiquote"
+    S_SYM,NULL,"quasiquote"
 };
 static VAR unquote = {
-    S_VAR,NULL,"unquote"
+    S_SYM,NULL,"unquote"
 };
 static VAR splice = {
-    S_VAR,NULL,"splice-unquote"
+    S_SYM,NULL,"splice-unquote"
 };
 static VAR deref = {
-    S_VAR,NULL,"deref"
+    S_SYM,NULL,"deref"
 };
 static VAR meta = {
-    S_VAR,NULL,"with-meta"
+    S_SYM,NULL,"with-meta"
 };
 
 VAR* handle_quote(int token_type)

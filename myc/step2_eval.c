@@ -35,7 +35,18 @@ int length(LIST* list)
         len++;
         elt = elt->next;
     }
-    return len;
+    return len;elt = ast->val.lval;
+        if (strcmp(elt->var->val.pval,"def!") == 0) {
+            elt = elt->next;
+            eval_list =  eval(elt->next->var,env);
+            printf("eval: %s\n",elt->var->val.pval);
+            env_put(env,elt->var->val.pval,eval_list);
+            env_dump(env);
+            return eval_list;
+        }
+        else if (strcmp(elt->var->val.pval,"let*") == 0) {
+            printf("got let*\n");
+        }
 }
 
 VAR* var_plus(VAR* total,VAR* new)

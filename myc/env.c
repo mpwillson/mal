@@ -77,6 +77,9 @@ ENV* env_put(ENV* env,char *name,VAR* var)
 		sp->next = env->sym[hashval];
 		env->sym[hashval] = sp;
 	}
+    else {
+        sp->value = var;
+    }
 	return env;
 }
 
@@ -121,19 +124,18 @@ void env_free(ENV* env)
             while (sp != NULL) {
                 sp = env->sym[i];
                 last_sp = sp;
-                free(sp->name);
-                if (isstr(sp->value->type)) {
-                    free(sp->value->val.pval);
-                }
-                else if (islist(sp->value->type)) {
-                    free_list(sp->value->val.lval);
-                }
-                free(sp->value);
+                /* VARs may be required for results passed back to
+                 * outer environment.  TBD: Handle all this garbage
+                 * that is being created */
+                /* free(sp->name); */
+                /* free_var(sp->value); */
                 sp = sp->next;
                 free(last_sp);
             }
         }
     }
+    free(env->sym);
+    free(env);
 }
 
     
