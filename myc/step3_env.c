@@ -203,6 +203,10 @@ VAR* eval(VAR* ast,ENV* env)
             if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
                 env_elt = elt->var->val.lval;
                 while (env_elt != NULL) {
+                    if (env_elt->next == NULL) {
+                        error.val.pval = mal_error("value expected");
+                        return &error;
+                    }
                     eval_list = eval(env_elt->next->var,new);
                     env_put(new,env_elt->var->val.pval,eval_list);
                     env_elt = env_elt->next->next;
