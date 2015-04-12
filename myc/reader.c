@@ -299,6 +299,8 @@ VAR* handle_quote(int token_type)
 {
     VAR* quote_type;
     VAR* list;
+    VAR* new = new_var();
+    LIST* elt;
     
     switch (token_type) {
         case S_QUOTE:
@@ -317,9 +319,16 @@ VAR* handle_quote(int token_type)
             quote_type = &deref;
             break;
     }
-    list = read_list(S_LIST,')');
+    //list = read_list(S_LIST,')');
+    list = read_form(lexer());
     if (list->type == S_ERROR) {
         return list;
+    }
+    else if (list->type != S_LIST) {
+        elt = append(NULL,list);
+        new->type = S_LIST;
+        new->val.lval = elt;
+        return insert(quote_type,new);
     }
     else {
         return insert(quote_type,list);
