@@ -319,12 +319,12 @@ VAR* handle_quote(int token_type)
             quote_type = &deref;
             break;
     }
-    //list = read_list(S_LIST,')');
     list = read_form(lexer());
     if (list->type == S_ERROR) {
         return list;
     }
     else if (list->type != S_LIST) {
+        /* turn into list, so quote atom can be inserted */
         elt = append(NULL,list);
         new->type = S_LIST;
         new->val.lval = elt;
@@ -333,7 +333,6 @@ VAR* handle_quote(int token_type)
     else {
         return insert(quote_type,list);
     }
-    
 }
 
 VAR* handle_meta()
