@@ -16,7 +16,7 @@ struct s_env {
 typedef struct s_env ENV;
 typedef struct s_sym SYM;
 
-ENV* new_env(int,ENV*);
+ENV* new_env(int,ENV*,VAR*,VAR*);
 int hash(ENV*,char*);
 SYM* lookup(ENV*,char*);
 ENV* env_put(ENV*,char*,VAR*);

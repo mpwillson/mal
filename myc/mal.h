@@ -9,7 +9,7 @@
 #define S_STR 3
 #define S_SYM 4
 #define S_USTR 5 /* unterminated string */
-#define S_FLOAT 6
+#define S_REAL 6
 #define S_LIST 7
 #define S_ROOT 8 /* a list that is not a list */
 #define S_KEYWORD 9
@@ -22,6 +22,10 @@
 #define S_META 16
 #define S_DEREF 17
 #define S_ERROR 18
+#define S_NIL 19
+#define S_TRUE 20
+#define S_FALSE 21
+#define S_FUN 22
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
                       t == S_HASHMAP)
@@ -31,15 +35,22 @@
 /* Forward references */
 struct s_list;
 struct s_var;
+struct s_fn;
+struct s_env;
+
 typedef struct s_var VAR;
 typedef struct s_list LIST;
-/* declaration for functions that do stuff to two VARs */
+typedef struct s_fn FN;
+
+/* declaration for internal functions that do stuff to two VARs */
 typedef VAR*(*FUN)(VAR*,VAR*);
 
 union u_val {
 	char *pval;
 	int ival;
-	float fval;
+	double rval;
+    FUN fval;
+    FN* defn;
     struct s_list *lval;
 };
 
@@ -52,6 +63,42 @@ struct s_var {
 struct s_list {
     VAR *var;
     struct s_list *next;
+};
+
+struct s_fn {
+    VAR* args;
+    VAR* forms;
+    struct s_env *env;
+};
+
+
+/* Pre-defined VARs */
+static VAR quote = {
+    S_SYM,NULL,"quote"
+};
+static VAR quasiquote = {
+    S_SYM,NULL,"quasiquote"
+};
+static VAR unquote = {
+    S_SYM,NULL,"unquote"
+};
+static VAR splice = {
+    S_SYM,NULL,"splice-unquote"
+};
+static VAR deref = {
+    S_SYM,NULL,"deref"
+};
+static VAR meta = {
+    S_SYM,NULL,"with-meta"
+};
+static VAR var_nil = {
+    S_NIL,NULL,NULL
+};
+static VAR var_true = {
+    S_TRUE,NULL,NULL
+};
+static VAR var_false = {
+    S_FALSE,NULL,NULL
 };
 
 /* function prototypes */

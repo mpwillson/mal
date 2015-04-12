@@ -40,6 +40,8 @@ static int bufidx;
 #define getlexchar() ((lexbuf[bufidx] != '\0')?lexbuf[bufidx++]:EOF)
 #define ungetlexchar() (bufidx--)
 
+
+
 void init_lexer(char *s)
 {
     bufidx = 0;
@@ -66,7 +68,7 @@ int lexer(void)
 		}
 		ungetlexchar();
 		lextok[i] = '\0';
-        if (strchr(lextok,'.') != NULL) lexsym = S_FLOAT;
+        if (strchr(lextok,'.') != NULL) lexsym = S_REAL;
 	}
 	else if (issymbol(ch) || ch == ':') {
         if (ch == ':') {
@@ -82,6 +84,15 @@ int lexer(void)
 		}
 		ungetlexchar();
 		lextok[i] = '\0';
+        if (strcmp(lextok,"nil") == 0) {
+            lexsym = S_NIL;
+        }
+        else if (strcmp(lextok,"true") == 0) {
+            lexsym = S_TRUE;
+        }
+        else if(strcmp(lextok,"false") == 0) {
+            lexsym = S_FALSE;
+        }
 	}
 	else if (ch == '"') {
 		ch = getlexchar();
@@ -201,23 +212,34 @@ char *strsave(char *s)
 
 /* Return atom, created from type and value */
 VAR* read_atom(int type,char *s)
-//VAR *symbolise(int type, char *s)
 {
-    VAR *new = new_var();
+    VAR *new;;
 
     new->type = type;
     switch (type) {
-        case S_INT: 
+        case S_INT:
+            new = new_var();
+            new->type = type;
             new->val.ival = strtol(s,NULL,10);
             break;
-        case S_FLOAT:
-            new->val.fval = strtod(s,NULL);
+        case S_REAL:
+            new = new_var();
+            new->type = type;
+            new->val.rval = strtod(s,NULL);
             break;
         case S_SYM:
         case S_STR:
         case S_KEYWORD:
+            new = new_var();
+            new->type = type;
             new->val.pval = strsave(s);
             break;
+        case S_NIL:
+            return &var_nil;
+        case S_TRUE:
+            return &var_true;
+        case S_FALSE:
+            return &var_false;
     }   
     return new;
 }
@@ -272,25 +294,6 @@ LIST* append(LIST* list,VAR* var)
     }
     return list;
 }
-
-static VAR quote = {
-    S_SYM,NULL,"quote"
-};
-static VAR quasiquote = {
-    S_SYM,NULL,"quasiquote"
-};
-static VAR unquote = {
-    S_SYM,NULL,"unquote"
-};
-static VAR splice = {
-    S_SYM,NULL,"splice-unquote"
-};
-static VAR deref = {
-    S_SYM,NULL,"deref"
-};
-static VAR meta = {
-    S_SYM,NULL,"with-meta"
-};
 
 VAR* handle_quote(int token_type)
 {

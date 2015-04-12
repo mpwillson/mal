@@ -43,7 +43,7 @@ char *stringify (char *s)
         else if (*s == '\n') {
             *p++ = '\\';
             *p++ = 'n';
-            *s++;
+            *s = *s + 1;
             continue;
         }
         *p++ = *s++;
@@ -86,8 +86,8 @@ char* print_str(VAR* var,bool print_readably)
         case S_INT:
             sprintf(buffer,"%d",var->val.ival);
             break;
-        case S_FLOAT:
-            sprintf(buffer,"%f",var->val.fval);
+        case S_REAL:
+            sprintf(buffer,"%f",var->val.rval);
             break;
         case S_STR:
             sprintf(buffer,"\"%s\"",stringify(var->val.pval));
@@ -97,6 +97,18 @@ char* print_str(VAR* var,bool print_readably)
             break;
         case S_KEYWORD:
             sprintf(buffer,":%s",var->val.pval);
+            break;
+        case S_NIL:
+            sprintf(buffer,"nil");
+            break;
+        case S_TRUE:
+            sprintf(buffer,"true");
+            break;
+        case S_FALSE:
+            sprintf(buffer,"false");
+            break;
+        case S_FUN:
+            sprintf(buffer,"#<%x>",(unsigned int)var->val.fval);
             break;
         case S_EOF:
             break;
