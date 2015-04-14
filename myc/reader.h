@@ -15,6 +15,7 @@ VAR* read_atom(int,char*);
 LIST* new_elt(void);
 VAR* new_var(void);
 LIST* append(LIST*,VAR*);
+VAR* insert(VAR*,VAR*);
 VAR* read_list(int,char);
 VAR* read_form(int);
 VAR* insert(VAR*,VAR*);

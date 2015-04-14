@@ -163,37 +163,53 @@ FN* new_fn()
     return fn;
 }
 
+VAR* list_to_var(int type,LIST* list)
+{
+    VAR* var = new_var();
+
+    var->type = type;
+    var->val.lval = list;
+    return var;
+}
+    
+/* Construct function environment from LIST* list.
+ * First element is the list of formal arguments.
+ * Rrmaining elements are the body of the function, which is turned
+ * into a do form. */
 VAR* make_fn(LIST* list,ENV *env)
 {
     FN* fn = new_fn();
-    VAR* forms = new_var();
-    VAR* fn_var = new_var();;
-    
+    VAR* fn_var = new_var();
+ 
     fn->args = list->var;
-    forms->type = S_LIST;
-    forms->val.lval = list->next;
-    fn->forms = forms;
-    env->closure = true;
+    fn->forms = insert(&var_do,list_to_var(S_LIST,list->next));
+    env->closure = true; /* don't free this env */
     fn->env = env;
     fn_var->type = S_FN;
     fn_var->val.fval = fn;
     return fn_var;
 }
 
+/* forward declare of eval */
+VAR* eval(VAR*,ENV*);
+VAR* eval_ast(VAR*,ENV*);
+
+
 VAR* execute_fn(VAR* fn, LIST* args)
 {
-    VAR* var = new_var();
+    VAR* exprs = new_var();
+    ENV* env;
+    VAR* evaled_list;
 
-    var->type = S_LIST;
-    var->val.lval = args;
-    printf("execute_fn: %s, with args: %s\n",print_str(fn,true),
-           print_str(var,true));
-    free(var);
-    return &var_nil;
+    exprs->type = S_LIST;
+    exprs->val.lval = args;
+    /* printf("execute_fn: %s, with args: %s\n",print_str(fn,true), */
+    /*        print_str(exprs,true)); */
+    env = new_env(37,fn->val.fval->env,fn->val.fval->args,exprs);
+    evaled_list = eval(fn->val.fval->forms,env);
+    free(exprs);
+    return evaled_list;
 }
-
-/* forward declare of eval for eval_ast */
-VAR* eval(VAR*,ENV*);
 
 /* TDB: Fix memory leaks */
 
@@ -212,10 +228,9 @@ VAR* eval_ast(VAR* ast, ENV* env)
         }
         return var;
     }
-    else if (ast->type == S_FN) {
-        return ast; 
-    }
-    
+    /* else if (ast->type == S_FN) { not required */
+    /*     return ast;  */
+    /* } */
     else if (islist(ast->type)) { 
         elt = ast->val.lval;
         while (elt != NULL) {
@@ -242,6 +257,9 @@ VAR* eval(VAR* ast,ENV* env)
     VAR* result = new_var();
     ENV* new;
 
+    /* printf("eval: ast->type: %d, ast: %s\n",ast->type,print_str(ast,true)); */
+    /* if (ast->type == S_ROOT) ast = ast->val.lval->var; strip outer list*/
+    
     if (ast->type == S_LIST) {
         elt = ast->val.lval;
         if (strcmp(elt->var->val.pval,"def!") == 0) {

@@ -44,13 +44,17 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     for (i=0;i<size;i++) {
         *sym++ = NULL;
     }
-    if (binds != NULL) {
+    if (binds != NULL && exprs != NULL) {
         bind_list = binds->val.lval;
         expr_list = exprs->val.lval;
         while (bind_list != NULL && expr_list != NULL) {
             env_put(env,bind_list->var->val.pval,expr_list->var);
             bind_list = bind_list->next;
             expr_list = expr_list->next;
+        }
+        if (bind_list != NULL) { /* missing exprs as nil */
+            env_put(env,bind_list->var->val.pval,&var_nil);
+            bind_list = bind_list->next;
         }
     }
     return env;

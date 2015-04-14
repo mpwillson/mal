@@ -98,6 +98,9 @@ static VAR var_true = {
 static VAR var_false = {
     S_FALSE,NULL,NULL
 };
+static VAR var_do = {
+    S_SYM,NULL,"do"
+};
 
 /* function prototypes */
 char* mal_error(const char *fmt, ...);
