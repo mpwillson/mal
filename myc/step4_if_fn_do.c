@@ -15,7 +15,13 @@ static char errmsg[BUFSIZE];
 
 /* For error returns */
 static VAR error = {S_ERROR,NULL,NULL};
-    
+
+void mal_die(char* msg)
+{
+    fprintf(stderr,"mal: FATAL: %s\n",msg);
+    exit(1);
+}
+
 char* mal_error(const char *fmt, ...)
 {
     va_list ap;
@@ -143,6 +149,49 @@ VAR* read(char* s)
     return var;
 }
 
+FN* new_fn()
+{
+    FN* fn;
+
+    fn = (FN*) malloc(sizeof(FN));
+    if (fn == NULL) {
+        mal_die("out of memory at new_fn");
+    }
+    fn->args = NULL;
+    fn->forms = NULL;
+    fn->env = NULL;
+    return fn;
+}
+
+VAR* make_fn(LIST* list,ENV *env)
+{
+    FN* fn = new_fn();
+    VAR* forms = new_var();
+    VAR* fn_var = new_var();;
+    
+    fn->args = list->var;
+    forms->type = S_LIST;
+    forms->val.lval = list->next;
+    fn->forms = forms;
+    env->closure = true;
+    fn->env = env;
+    fn_var->type = S_FN;
+    fn_var->val.fval = fn;
+    return fn_var;
+}
+
+VAR* execute_fn(VAR* fn, LIST* args)
+{
+    VAR* var = new_var();
+
+    var->type = S_LIST;
+    var->val.lval = args;
+    printf("execute_fn: %s, with args: %s\n",print_str(fn,true),
+           print_str(var,true));
+    free(var);
+    return &var_nil;
+}
+
 /* forward declare of eval for eval_ast */
 VAR* eval(VAR*,ENV*);
 
@@ -163,6 +212,10 @@ VAR* eval_ast(VAR* ast, ENV* env)
         }
         return var;
     }
+    else if (ast->type == S_FN) {
+        return ast; 
+    }
+    
     else if (islist(ast->type)) { 
         elt = ast->val.lval;
         while (elt != NULL) {
@@ -256,18 +309,25 @@ VAR* eval(VAR* ast,ENV* env)
             }
             return eval_list;
         }
+        else if (strcmp(elt->var->val.pval,"fn*") == 0) {
+            return make_fn(elt->next,env);
+        }
         eval_list = eval_ast(ast,env);
         if (eval_list->type != S_ERROR) {
             elt = eval_list->val.lval;
             if (elt->var->function != NULL) {
                 eval_list = arith(elt->var->function,result,elt->next);
             }
+            else if (elt->var->type == S_FN) {
+                eval_list = execute_fn(elt->var,elt->next);
+                return eval_list;
+            }
             else {
                 error.val.pval =
                     mal_error("'%s' not callable",
                               print_str(elt->var,true));
                 return &error;
-            }   
+            }
         }
         return eval_list;
     }

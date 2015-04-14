@@ -249,7 +249,7 @@ LIST* new_elt() {
     
     elt = (LIST *) malloc(sizeof(LIST));
     if (elt == NULL) {
-        mal_error("out of memory at new_elt.");
+        mal_die("out of memory at new_elt.");
     }
     elt->var = NULL;
     elt->next = NULL;
@@ -261,7 +261,7 @@ VAR* new_var() {
     
     var = (VAR *) malloc(sizeof(VAR));
     if (var == NULL)  {
-        mal_error("out of memory at new_var.");
+        mal_die("out of memory at new_var.");
     }
     var->type = S_UNDEF;
     var->val.lval = NULL;

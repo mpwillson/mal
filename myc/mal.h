@@ -25,12 +25,11 @@
 #define S_NIL 19
 #define S_TRUE 20
 #define S_FALSE 21
-#define S_FUN 22
+#define S_FN 22
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
                       t == S_HASHMAP)
-#define isstr(t) (t == S_STR || t == S_SYM || t == S_KEYWORD || \
-                      t == S_HASHMAP)
+#define isstr(t) (t == S_STR || t == S_SYM || t == S_KEYWORD)
 
 /* Forward references */
 struct s_list;
@@ -49,8 +48,7 @@ union u_val {
 	char *pval;
 	int ival;
 	double rval;
-    FUN fval;
-    FN* defn;
+    FN* fval;
     struct s_list *lval;
 };
 
@@ -103,6 +101,7 @@ static VAR var_false = {
 
 /* function prototypes */
 char* mal_error(const char *fmt, ...);
+void mal_die(char*);
 void free_var(VAR*);
 void free_list(LIST*);
 

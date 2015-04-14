@@ -9,6 +9,7 @@ struct s_sym {
 
 struct s_env {
     int size;
+    bool closure;
     struct s_env *outer;
     struct s_sym **sym;
 };

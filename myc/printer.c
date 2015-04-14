@@ -107,7 +107,7 @@ char* print_str(VAR* var,bool print_readably)
         case S_FALSE:
             sprintf(buffer,"false");
             break;
-        case S_FUN:
+        case S_FN:
             sprintf(buffer,"#<%x>",(unsigned int)var->val.fval);
             break;
         case S_EOF:

@@ -37,6 +37,7 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     
     env = (ENV*) malloc(sizeof(ENV));
     env->size = size;
+    env->closure = false;
     env->outer = outer;
     env->sym = (SYM**) malloc(sizeof(SYM*)*size);
     sym = env->sym;
@@ -128,7 +129,7 @@ void env_free(ENV* env)
 {
     SYM* sp,*last_sp;
     int i;
-
+    if (env->closure) return;
     for (i=0;i<env->size;i++) {
         if (env->sym[i] != NULL) {
             while (sp != NULL) {
