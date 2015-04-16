@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "mal.h"
 #include "reader.h"
@@ -140,15 +142,6 @@ VAR* arith(FUN fun,VAR* result,LIST* list)
     return result;
 }
 
-VAR* read(char* s)
-{
-    VAR *var;
-    
-    init_lexer(s);
-    var = read_list(S_ROOT,')');
-    return var;
-}
-
 FN* new_fn()
 {
     FN* fn;
@@ -171,19 +164,21 @@ VAR* list_to_var(int type,LIST* list)
     var->val.lval = list;
     return var;
 }
-    
+
 /* Construct function environment from LIST* list.
  * First element is the list of formal arguments.
- * Rrmaining elements are the body of the function, which is turned
- * into a do form. */
+ * Rrmaining elements are the body of the function, which is executed
+ * as a do form.
+ * TDB Add error checking.
+ */
 VAR* make_fn(LIST* list,ENV *env)
 {
     FN* fn = new_fn();
     VAR* fn_var = new_var();
  
     fn->args = list->var;
-    fn->forms = insert(&var_do,list_to_var(S_LIST,list->next));
-    env->closure = true; /* don't free this env */
+    fn->forms = list->next;
+    env->closure = true;
     fn->env = env;
     fn_var->type = S_FN;
     fn_var->val.fval = fn;
@@ -194,7 +189,20 @@ VAR* make_fn(LIST* list,ENV *env)
 VAR* eval(VAR*,ENV*);
 VAR* eval_ast(VAR*,ENV*);
 
-
+VAR* do_form(LIST* form,ENV* env)
+{
+    VAR* result;
+    LIST* elt;
+    
+    result = &var_nil;
+    elt = form;
+    while (elt != NULL) {
+        result = eval(elt->var,env);
+        elt = elt->next;
+    }
+    return result;
+}
+    
 VAR* execute_fn(VAR* fn, LIST* args)
 {
     VAR* exprs = new_var();
@@ -206,8 +214,9 @@ VAR* execute_fn(VAR* fn, LIST* args)
     /* printf("execute_fn: %s, with args: %s\n",print_str(fn,true), */
     /*        print_str(exprs,true)); */
     env = new_env(37,fn->val.fval->env,fn->val.fval->args,exprs);
-    evaled_list = eval(fn->val.fval->forms,env);
+    evaled_list = do_form(fn->val.fval->forms,env);
     free(exprs);
+    env_free(env);
     return evaled_list;
 }
 
@@ -228,9 +237,6 @@ VAR* eval_ast(VAR* ast, ENV* env)
         }
         return var;
     }
-    /* else if (ast->type == S_FN) { not required */
-    /*     return ast;  */
-    /* } */
     else if (islist(ast->type)) { 
         elt = ast->val.lval;
         while (elt != NULL) {
@@ -256,9 +262,6 @@ VAR* eval(VAR* ast,ENV* env)
     LIST* elt,*env_elt;
     VAR* result = new_var();
     ENV* new;
-
-    /* printf("eval: ast->type: %d, ast: %s\n",ast->type,print_str(ast,true)); */
-    /* if (ast->type == S_ROOT) ast = ast->val.lval->var; strip outer list*/
     
     if (ast->type == S_LIST) {
         elt = ast->val.lval;
@@ -297,13 +300,7 @@ VAR* eval(VAR* ast,ENV* env)
             return eval_list;
         }
         else if (strcmp(elt->var->val.pval,"do") == 0) {
-            elt = elt->next;
-            eval_list = &var_nil;
-            while (elt != NULL) {
-                eval_list = eval(elt->var,env);
-                elt = elt->next;
-            }
-            return eval_list;
+            return do_form(elt->next,env);
         }
         else if (strcmp(elt->var->val.pval,"if") == 0) {
             elt = elt->next;
@@ -354,6 +351,15 @@ VAR* eval(VAR* ast,ENV* env)
     }
 }
 
+VAR* repl_read(char* s)
+{
+    VAR *var;
+    
+    init_lexer(s);
+    var = read_list(S_ROOT,')');
+    return var;
+}
+
 char* print(VAR* var)
 {
     return print_str(var,true);
@@ -370,7 +376,7 @@ char* rep(char* s,ENV* env)
 {
     char* output;
 
-    output = print(eval(read(s),env));
+    output = print(eval(repl_read(s),env));
     return output;
 }
 
@@ -391,13 +397,13 @@ int main(void)
         env_put(env,strsave(arith_op[i].val.pval),var);
     }
     while (!at_eof) {
-        fprintf(stdout,"user> ");
-        fflush(stdout);
-        bufread = fgets(buf,BUFSIZE,stdin);
+        bufread = readline("user> ");
         at_eof = feof(stdin) || bufread == NULL;
         if (bufread) {
-            fprintf(stdout,"%s\n",rep(buf,env));
+            fprintf(stdout,"%s\n",rep(bufread,env));
+            if (strlen(bufread) > 0) add_history(bufread);
         }
+        free(bufread);
     }
     env_free(env);
     fprintf(stdout,"\n");

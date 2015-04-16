@@ -3,9 +3,10 @@
 TARGET=step4_if_fn_do
 S_OBJS=step4_if_fn_do.o reader.o printer.o env.o
 CFLAGS=-g -Wno-pointer-to-int-cast
+LDFLAGS=-lreadline
 
 ${TARGET}: $(S_OBJS) mal.h reader.h printer.h env.h
-	cc ${CFLAGS} -o $@ ${S_OBJS}
+	cc ${CFLAGS} -o $@ ${S_OBJS} ${LDFLAGS}
 
 ${S_OBJS}: mal.h
 

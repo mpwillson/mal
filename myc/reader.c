@@ -38,8 +38,7 @@ static char lexbuf[LEXBUFSIZ+1];
 static int bufidx;
 
 #define getlexchar() ((lexbuf[bufidx] != '\0')?lexbuf[bufidx++]:EOF)
-#define ungetlexchar() (bufidx--)
-
+#define ungetlexchar(ch) ((ch != '\0' && ch != EOF)?bufidx--:0)
 
 
 void init_lexer(char *s)
@@ -66,7 +65,7 @@ int lexer(void)
 			lextok[i++] = ch;
 			ch = getlexchar();
 		}
-		ungetlexchar();
+		ungetlexchar(ch);
 		lextok[i] = '\0';
         if (strchr(lextok,'.') != NULL) lexsym = S_REAL;
 	}
@@ -82,7 +81,7 @@ int lexer(void)
 			lextok[i++] = ch;
 			ch = getlexchar();
 		}
-		ungetlexchar();
+		ungetlexchar(ch);
 		lextok[i] = '\0';
         if (strcmp(lextok,"nil") == 0) {
             lexsym = S_NIL;
@@ -107,7 +106,7 @@ int lexer(void)
             ch = getlexchar();
 		}
 		if (ch != '"') {
-			ungetlexchar();
+			ungetlexchar(ch);
 			lexsym = S_USTR; 	/* unterminated string */
 		}
 		else {
@@ -124,7 +123,7 @@ int lexer(void)
 		lexsym = S_EOF;
 		strcpy(lextok,"end-of-file");
 	}
-	else if (ch == '\n') {
+	else if (ch == '\n' || ch == '\0') {
 		lexsym = S_EOE;
 		strcpy(lextok,"newline");
 	}
@@ -143,7 +142,7 @@ int lexer(void)
             strcpy(lextok,"splice-unquote");
         }
         else {
-            ungetlexchar();
+            ungetlexchar(ch);
             lexsym = S_UNQUOTE;
             strcpy(lextok,"unquote");
         }
@@ -162,12 +161,12 @@ int lexer(void)
     }
     else {
 		/* unrecognised token */
-		while (ch != '\n' && ch != EOF && i < LEXTOKSIZ) {
+		while (ch != '\n' && ch != EOF && ch != '\0' && i < LEXTOKSIZ) {
 			lextok[i++] = ch;
 			ch = getlexchar();
 		}
 		lextok[i] = '\0';
-		ungetlexchar();
+		ungetlexchar(ch);
 		lexsym = S_UNDEF;
 	}
     return lexsym;

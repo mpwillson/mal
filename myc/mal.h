@@ -49,7 +49,7 @@ union u_val {
 	int ival;
 	double rval;
     FN* fval;
-    struct s_list *lval;
+    LIST* lval;
 };
 
 struct s_var {
@@ -65,7 +65,7 @@ struct s_list {
 
 struct s_fn {
     VAR* args;
-    VAR* forms;
+    LIST* forms;
     struct s_env *env;
 };
 
