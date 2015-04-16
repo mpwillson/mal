@@ -120,9 +120,8 @@ void env_dump(ENV* env)
         if (env->sym[i] != NULL) {
             sp = env->sym[i];
             while (sp != NULL) {
-                printf("[%d] %s: type %d, value: %s, fun: %x\n",
-                       i,sp->name,sp->value->type,print_str(sp->value,true),
-                       (unsigned int) sp->value->function);
+                printf("[%d] %s: type %d, value: %s\n",
+                       i,sp->name,sp->value->type,print_str(sp->value,true));
                 sp = sp->next;
             }
         }

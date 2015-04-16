@@ -10,13 +10,14 @@
 #include "reader.h"
 #include "printer.h"
 #include "env.h"
-
+#include "core.h"
+    
 #define BUFSIZE 1024
 
 static char errmsg[BUFSIZE];
 
 /* For error returns */
-static VAR error = {S_ERROR,NULL,NULL};
+static VAR error = {S_ERROR,NULL};
 
 void mal_die(char* msg)
 {
@@ -32,6 +33,66 @@ char* mal_error(const char *fmt, ...)
     vsprintf(errmsg,fmt,ap);
     va_end(ap);
     return errmsg;
+}
+
+char *strsave(char *s)
+{
+	char *p;
+
+	p = (char *) malloc(strlen(s)+1);
+	if (p != NULL) 	strcpy(p,s);
+	return p;
+}
+
+LIST* new_elt() {
+    LIST* elt;
+    
+    elt = (LIST *) malloc(sizeof(LIST));
+    if (elt == NULL) {
+        mal_die("out of memory at new_elt.");
+    }
+    elt->var = NULL;
+    elt->next = NULL;
+    return elt;
+}
+
+VAR* new_var() {
+    VAR* var;
+    
+    var = (VAR *) malloc(sizeof(VAR));
+    if (var == NULL)  {
+        mal_die("out of memory at new_var.");
+    }
+    var->type = S_UNDEF;
+    var->val.lval = NULL;
+    return var;
+}
+
+VAR* insert(VAR* var, VAR* list)
+{
+    LIST* elt = new_elt();
+
+    elt->var = var;
+    elt->next = list->val.lval;
+    list->val.lval = elt;
+    return list;
+}
+
+LIST* append(LIST* list,VAR* var)
+{
+    LIST *elt,*current;
+
+    elt = new_elt();
+    elt->var = var;
+    if (list == NULL) {
+        return elt;
+    }
+    else {
+        current = list;
+        while (current->next != NULL) current = current->next;
+        current->next = elt;
+    }
+    return list;
 }
 
 void free_var(VAR* var)
@@ -58,90 +119,6 @@ void free_list(LIST* list)
     }
 }
 
-int length(LIST* list)
-{
-    int len = 0;
-    LIST* elt = list;
-    
-    while (elt != NULL) {
-        len++;
-        elt = elt->next;
-    }
-    return len;
-}
-
-VAR* var_plus(VAR* total,VAR* new)
-{
-    /* VAR* var; */
-    total->val.ival += new->val.ival;
-    return total;
-    /* CODE to allow promotion of ints to reals. */
-    /* var = new_var(); */
-    /* if (sum->type == S_FLOAT) { */
-    /*     switch (add->type) { */
-    /*         case S_INT: */
-    /*             sum->val.fval += add->val.ival; */
-    /*             break; */
-    /*         case S_FLOAT: */
-    /*             sum->val.fval += add->val.fval; */
-    /*             break; */
-    /*     } */
-    /* } */
-    /* else { /\*assume sum type is S_INT *\/ */
-    /*     if (add->type == S_FLOAT) { */
-    /*         sum->type = S_FLOAT; */
-    /*         sum->val.fval = sum->val.ival + add->val.fval; */
-    /*     } */
-    /*     else { */
-    /*         sum->val.ival += add->val.ival; */
-    /*     } */
-    /* } */
-    /* return sum; */
-}
-
-VAR* var_mul(VAR* total,VAR* new)
-{
-    total->val.ival *= new->val.ival;
-    return total;
-}
-
-VAR* var_div(VAR* total,VAR* new)
-{
-    total->val.ival = total->val.ival/new->val.ival;
-    return total;
-}
-
-VAR* var_minus(VAR* total,VAR* new)
-{
-    total->val.ival -= new->val.ival;
-    return total;
-}
-
-VAR* arith(FUN fun,VAR* result,LIST* list)
-{
-    LIST* elt;
-    int len;
-    
-    elt = list;
-    result->type = S_INT;
-    result->val.ival = 0;
-    if (fun == var_mul) {
-        result->val.ival = 1;
-    }
-    else if ((fun == var_div || fun == var_minus) && list != NULL) {
-        len = length(list);
-        if (len != 1) {
-            result = list->var;
-            elt = list->next;
-        }
-    }
-    while (elt != NULL) {
-        result = fun(result,elt->var);
-        elt = elt->next;
-    }
-    return result;
-}
-
 FN* new_fn()
 {
     FN* fn;
@@ -154,15 +131,6 @@ FN* new_fn()
     fn->forms = NULL;
     fn->env = NULL;
     return fn;
-}
-
-VAR* list_to_var(int type,LIST* list)
-{
-    VAR* var = new_var();
-
-    var->type = type;
-    var->val.lval = list;
-    return var;
 }
 
 /* Construct function environment from LIST* list.
@@ -330,8 +298,8 @@ VAR* eval(VAR* ast,ENV* env)
         eval_list = eval_ast(ast,env);
         if (eval_list->type != S_ERROR) {
             elt = eval_list->val.lval;
-            if (elt->var->function != NULL) {
-                eval_list = arith(elt->var->function,result,elt->next);
+            if (elt->var->type == S_BUILTIN) {
+                eval_list = elt->var->val.bval(elt->next);
             }
             else if (elt->var->type == S_FN) {
                 eval_list = execute_fn(elt->var,elt->next);
@@ -364,14 +332,7 @@ char* print(VAR* var)
 {
     return print_str(var,true);
 }
-VAR arith_op[] =
-{
-    {S_SYM,var_plus,"+"},
-    {S_SYM,var_minus,"-"},
-    {S_SYM,var_mul,"*"},
-    {S_SYM,var_div,"/"},
-};
-        
+     
 char* rep(char* s,ENV* env)
 {
     char* output;
@@ -382,20 +343,10 @@ char* rep(char* s,ENV* env)
 
 int main(void)
 {
-    char buf[BUFSIZE+1];
     char* bufread;
     bool at_eof = false;
-    ENV* env = new_env(101,NULL,NULL,NULL);
-    int i;
-    VAR* var;
+    ENV* env = ns_get();
     
-    for (i=0;i<(sizeof(arith_op)/sizeof(VAR));i++) {
-        var = new_var();
-        var->type = S_SYM;
-        var->function = arith_op[i].function;
-        var->val.pval = strsave(arith_op[i].val.pval);
-        env_put(env,strsave(arith_op[i].val.pval),var);
-    }
     while (!at_eof) {
         bufread = readline("user> ");
         at_eof = feof(stdin) || bufread == NULL;

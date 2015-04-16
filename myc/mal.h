@@ -26,6 +26,7 @@
 #define S_TRUE 20
 #define S_FALSE 21
 #define S_FN 22
+#define S_BUILTIN 23
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
                       t == S_HASHMAP)
@@ -42,7 +43,7 @@ typedef struct s_list LIST;
 typedef struct s_fn FN;
 
 /* declaration for internal functions that do stuff to two VARs */
-typedef VAR*(*FUN)(VAR*,VAR*);
+typedef VAR*(*BUILTIN)(LIST*);
 
 union u_val {
 	char *pval;
@@ -50,11 +51,11 @@ union u_val {
 	double rval;
     FN* fval;
     LIST* lval;
+    BUILTIN bval;
 };
 
 struct s_var {
 	int type;
-    FUN function;
 	union u_val val;
 };
 
@@ -72,34 +73,34 @@ struct s_fn {
 
 /* Pre-defined VARs */
 static VAR quote = {
-    S_SYM,NULL,"quote"
+    S_SYM,"quote"
 };
 static VAR quasiquote = {
-    S_SYM,NULL,"quasiquote"
+    S_SYM,"quasiquote"
 };
 static VAR unquote = {
-    S_SYM,NULL,"unquote"
+    S_SYM,"unquote"
 };
 static VAR splice = {
-    S_SYM,NULL,"splice-unquote"
+    S_SYM,"splice-unquote"
 };
 static VAR deref = {
-    S_SYM,NULL,"deref"
+    S_SYM,"deref"
 };
 static VAR meta = {
-    S_SYM,NULL,"with-meta"
+    S_SYM,"with-meta"
 };
 static VAR var_nil = {
-    S_NIL,NULL,NULL
+    S_NIL,NULL
 };
 static VAR var_true = {
-    S_TRUE,NULL,NULL
+    S_TRUE,NULL
 };
 static VAR var_false = {
-    S_FALSE,NULL,NULL
+    S_FALSE,NULL
 };
 static VAR var_do = {
-    S_SYM,NULL,"do"
+    S_SYM,"do"
 };
 
 /* function prototypes */
@@ -107,5 +108,10 @@ char* mal_error(const char *fmt, ...);
 void mal_die(char*);
 void free_var(VAR*);
 void free_list(LIST*);
+LIST* new_elt(void);
+VAR* new_var(void);
+LIST* append(LIST*,VAR*);
+VAR* insert(VAR*,VAR*);
+char* strsave(char*);
 
 #endif

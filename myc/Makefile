@@ -1,7 +1,7 @@
 #TARGET=step1_read_print
 #S_OBJS=step1_read_print.o reader.o printer.o
 TARGET=step4_if_fn_do
-S_OBJS=step4_if_fn_do.o reader.o printer.o env.o
+S_OBJS=step4_if_fn_do.o reader.o printer.o env.o core.o
 CFLAGS=-g -Wno-pointer-to-int-cast
 LDFLAGS=-lreadline
 

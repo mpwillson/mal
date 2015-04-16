@@ -199,16 +199,6 @@ char* list_close(int type)
     
 }
 
-char *strsave(char *s)
-{
-	char *p;
-
-	p = (char *) malloc(strlen(s)+1);
-	if (p != NULL) 	strcpy(p,s);
-	return p;
-}
-
-
 /* Return atom, created from type and value */
 VAR* read_atom(int type,char *s)
 {
@@ -241,57 +231,6 @@ VAR* read_atom(int type,char *s)
             return &var_false;
     }   
     return new;
-}
-
-LIST* new_elt() {
-    LIST* elt;
-    
-    elt = (LIST *) malloc(sizeof(LIST));
-    if (elt == NULL) {
-        mal_die("out of memory at new_elt.");
-    }
-    elt->var = NULL;
-    elt->next = NULL;
-    return elt;
-}
-
-VAR* new_var() {
-    VAR* var;
-    
-    var = (VAR *) malloc(sizeof(VAR));
-    if (var == NULL)  {
-        mal_die("out of memory at new_var.");
-    }
-    var->type = S_UNDEF;
-    var->val.lval = NULL;
-    return var;
-}
-
-VAR* insert(VAR* var, VAR* list)
-{
-    LIST* elt = new_elt();
-
-    elt->var = var;
-    elt->next = list->val.lval;
-    list->val.lval = elt;
-    return list;
-}
-
-LIST* append(LIST* list,VAR* var)
-{
-    LIST *elt,*current;
-
-    elt = new_elt();
-    elt->var = var;
-    if (list == NULL) {
-        return elt;
-    }
-    else {
-        current = list;
-        while (current->next != NULL) current = current->next;
-        current->next = elt;
-    }
-    return list;
 }
 
 VAR* handle_quote(int token_type)
