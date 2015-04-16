@@ -32,6 +32,64 @@ VAR* b_count(LIST* list)
     return var;
 }
 
+VAR* b_listp(LIST* list)
+{
+    if (list->var->type == S_LIST) {
+        return &var_true;
+    }
+    else {
+        return &var_false;
+    }
+}
+
+VAR* b_emptyp(LIST* list)
+{
+    if (islist(list->var->type) && list->var->val.lval == NULL) {
+        return &var_true;
+    }
+    else {
+        return &var_false;
+    }
+}
+
+VAR* var_equalp(VAR* v1, VAR* v2)
+{
+    bool eq;
+    
+    if (v1->type != v2->type) return &var_false;
+    switch (v1->type) {
+        case S_INT:
+            eq = v1->val.ival == v2->val.ival;
+            break;
+        case S_REAL:
+            eq = v1->val.rval == v2->val.rval;
+            break;
+    }
+    return &var_false;
+}
+
+
+VAR* list_equalp(LIST* l1, LIST* l2)
+{
+}
+
+VAR* b_equalp(LIST* list)
+{
+    LIST *l1,*l2;
+    VAR* v1= NULL ,*v2 = NULL;
+
+    if (list == NULL) return &var_false;
+    v1 = list->var;
+    if (list->next == NULL) return &var_false;
+    v2 = list->next->var;
+    if (islist(v1->type) && islist(v2->type)) {
+        return list_equalp(v1->val.lval,v2->val.lval);
+    }
+    else {
+        return var_equalp(v1,v2);
+    }
+}
+
 VAR* arith(char type,LIST* list)
 {
     LIST* elt;
@@ -132,7 +190,10 @@ struct s_builtin core_fn[] =
     {"*",b_mul},
     {"/",b_div},
     {"list",b_list},
-    {"count",b_count}
+    {"count",b_count},
+    {"list?",b_listp},
+    {"empty?",b_emptyp},
+    {"=",b_equalp}
 };
  
 /* Insert inbuilt functions into ns namespace and return pointer */

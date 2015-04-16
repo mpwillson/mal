@@ -231,7 +231,7 @@ VAR* eval(VAR* ast,ENV* env)
     VAR* result = new_var();
     ENV* new;
     
-    if (ast->type == S_LIST) {
+    if (ast->type == S_LIST && ast->val.lval != NULL) {
         elt = ast->val.lval;
         if (strcmp(elt->var->val.pval,"def!") == 0) {
             elt = elt->next;
