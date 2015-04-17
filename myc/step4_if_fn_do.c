@@ -346,6 +346,9 @@ int main(void)
     char* bufread;
     bool at_eof = false;
     ENV* env = ns_get();
+
+    /* define mal functions */
+    rep("(def! not (fn* [x] (if x false true)))",env);
     
     while (!at_eof) {
         bufread = readline("user> ");

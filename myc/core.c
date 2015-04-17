@@ -52,6 +52,9 @@ VAR* b_emptyp(LIST* list)
     }
 }
 
+/* forward declaration */
+bool list_equalp(LIST*,LIST*);
+
 VAR* var_equalp(VAR* v1, VAR* v2)
 {
     bool eq;
@@ -64,13 +67,44 @@ VAR* var_equalp(VAR* v1, VAR* v2)
         case S_REAL:
             eq = v1->val.rval == v2->val.rval;
             break;
+        case S_STR:
+        case S_SYM:
+        case S_KEYWORD:
+            eq = (strcmp(v1->val.pval,v2->val.pval)==0);
+            break;
+        case S_FN:
+            eq = (v1->val.fval == v2->val.fval);
+            break;
+        case S_BUILTIN:
+            eq = (v1->val.bval == v2->val.bval);
+            break;
+        case S_LIST:
+        case S_HASHMAP:
+        case S_VECTOR:
+        case S_ROOT:
+            eq = list_equalp(v1->val.lval,v2->val.lval);
+            break;
+        default:
+            eq = false;
     }
-    return &var_false;
+    return (eq?&var_true:&var_false);
 }
 
 
-VAR* list_equalp(LIST* l1, LIST* l2)
+bool list_equalp(LIST* l1, LIST* l2)
 {
+    LIST* e1,*e2;
+
+    e1 = l1;
+    e2 = l2;
+    while (e1 != NULL && e2 != NULL) {
+        if (!var_equalp(e1->var,e2->var)) {
+            return false;
+        }
+        e1 = e1->next;
+        e2 = e2->next;
+    }
+    return (e1 == NULL && e2 == NULL);
 }
 
 VAR* b_equalp(LIST* list)
@@ -82,12 +116,7 @@ VAR* b_equalp(LIST* list)
     v1 = list->var;
     if (list->next == NULL) return &var_false;
     v2 = list->next->var;
-    if (islist(v1->type) && islist(v2->type)) {
-        return list_equalp(v1->val.lval,v2->val.lval);
-    }
-    else {
-        return var_equalp(v1,v2);
-    }
+    return var_equalp(v1,v2);
 }
 
 VAR* arith(char type,LIST* list)
