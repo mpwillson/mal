@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #include "mal.h"
 #include "env.h"
@@ -212,6 +213,67 @@ VAR* b_list(LIST* list)
     return var;
 }
 
+#define S_LTEQ 1
+#define S_GTEQ 2
+
+VAR* compare(char type,LIST* list)
+{
+    LIST* elt;
+    int current = INT_MIN;
+    bool satisfied = true;
+
+    elt = list;
+    if (type == '<' || type == S_LTEQ) {
+        current = INT_MIN;
+    }
+    else {
+        current = INT_MAX;
+    }
+    while (elt != NULL) {
+        if (elt->var->type == S_INT) {
+            switch (type) {
+                case '<':
+                    satisfied = (current < elt->var->val.ival);
+                    break;
+                case '>':
+                    satisfied = (current > elt->var->val.ival);
+                    break;
+                case S_LTEQ:
+                    satisfied = (current <= elt->var->val.ival);
+                    break;
+                case S_GTEQ:
+                    satisfied = (current >= elt->var->val.ival);
+                    break;
+            }
+            if (!satisfied) return &var_false;
+            current = elt->var->val.ival;
+            elt = elt->next;
+        }
+    }
+    return &var_true;
+}
+                    
+
+VAR* b_lessthanp(LIST* list)
+{
+    return compare('<',list);
+}
+
+VAR* b_lessthaneqp(LIST* list)
+{
+    return compare(S_LTEQ,list);
+}
+
+VAR* b_greaterthanp(LIST* list)
+{
+    return compare('>',list);
+}
+
+VAR* b_greaterthaneqp(LIST* list)
+{
+    return compare(S_GTEQ,list);
+}
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -222,7 +284,11 @@ struct s_builtin core_fn[] =
     {"count",b_count},
     {"list?",b_listp},
     {"empty?",b_emptyp},
-    {"=",b_equalp}
+    {"=",b_equalp},
+    {"<",b_lessthanp},
+    {"<=",b_lessthaneqp},
+    {">",b_greaterthanp},
+    {">=",b_greaterthaneqp}
 };
  
 /* Insert inbuilt functions into ns namespace and return pointer */
