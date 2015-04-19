@@ -34,7 +34,9 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     int i;
     SYM** sym;
     LIST* bind_list, *expr_list;
-    
+    VAR* rest;
+    LIST nil_elt = {&var_nil,NULL};
+
     env = (ENV*) malloc(sizeof(ENV));
     env->size = size;
     env->closure = false;
@@ -44,17 +46,22 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     for (i=0;i<size;i++) {
         *sym++ = NULL;
     }
-    if (binds != NULL && exprs != NULL) {
+    if (binds != NULL) {
         bind_list = binds->val.lval;
         expr_list = exprs->val.lval;
-        while (bind_list != NULL && expr_list != NULL) {
+        if (expr_list == NULL) expr_list = &nil_elt;
+        while (bind_list != NULL) {
+            if (strcmp(bind_list->var->val.pval,"&") == 0) {
+                bind_list = bind_list->next;
+                rest = new_var();
+                rest->type = S_LIST;
+                rest->val.lval = (expr_list==&nil_elt?NULL:expr_list);
+                env_put(env,bind_list->var->val.pval,rest);
+                return env;
+            }
             env_put(env,bind_list->var->val.pval,expr_list->var);
             bind_list = bind_list->next;
-            expr_list = expr_list->next;
-        }
-        if (bind_list != NULL) { /* missing exprs as nil */
-            env_put(env,bind_list->var->val.pval,&var_nil);
-            bind_list = bind_list->next;
+            expr_list = (expr_list->next==NULL?&nil_elt:expr_list->next);
         }
     }
     return env;

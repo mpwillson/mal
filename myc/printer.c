@@ -37,7 +37,7 @@ char *stringify (char *s)
 
     p = buf;
     while (*s != '\0') {
-        if (*s == '"') {
+        if (*s == '"' || *s == '\\') {
             *p++ = '\\';
         }
         else if (*s == '\n') {
@@ -71,7 +71,7 @@ char* print_str(VAR* var,bool print_readably)
             elt = var->val.lval;
             if (var->type != S_ROOT) strcat(buffer,list_open(var->type));
             while (elt != NULL) {
-                strcpy(tok,print_str(elt->var,true));
+                strcpy(tok,print_str(elt->var,print_readably));
                 if (first) {
                         first = false;
                     }
@@ -90,7 +90,12 @@ char* print_str(VAR* var,bool print_readably)
             sprintf(buffer,"%f",var->val.rval);
             break;
         case S_STR:
-            sprintf(buffer,"\"%s\"",stringify(var->val.pval));
+            if (print_readably) {
+                sprintf(buffer,"\"%s\"",stringify(var->val.pval));
+            }
+            else {
+                sprintf(buffer,"%s",var->val.pval);
+            }   
             break;
         case S_SYM:
             sprintf(buffer,"%s",var->val.pval);

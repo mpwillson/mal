@@ -288,6 +288,7 @@ VAR* eval(VAR* ast,ENV* env)
                     }
                 }
                 else {
+                    eval_list = &var_nil;
                     if (elt != NULL) elt = elt->next;
                     if (elt != NULL) eval_list = eval(elt->var,env);
                 }

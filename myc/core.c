@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <limits.h>
 
 #include "mal.h"
 #include "env.h"
 #include "core.h"
+#include "printer.h"
 
 struct s_builtin {
     char* name;
@@ -61,7 +63,7 @@ VAR* var_equalp(VAR* v1, VAR* v2)
     bool eq;
 
     /* all lists types are equal in mal? */
-    if ((!islist(v1->type) && !islist(v2->type)) &&
+    if (!(islist(v1->type) && islist(v2->type)) &&
          v1->type != v2->type) return &var_false;
     switch (v1->type) {
         case S_INT:
@@ -86,6 +88,11 @@ VAR* var_equalp(VAR* v1, VAR* v2)
         case S_VECTOR:
         case S_ROOT:
             eq = list_equalp(v1->val.lval,v2->val.lval);
+            break;
+        case S_NIL:
+        case S_FALSE:
+        case S_TRUE:
+            eq = true;
             break;
         default:
             eq = false;
@@ -275,6 +282,62 @@ VAR* b_greaterthaneqp(LIST* list)
     return compare(S_GTEQ,list);
 }
 
+static char buffer[1024];
+
+VAR* pr_str(LIST* list,bool readable)
+{
+    LIST* elt;
+    VAR* var = new_var();
+
+    buffer[0] = '\0';
+    elt = list;
+    while (elt != NULL) {
+        strcat(buffer,print_str(elt->var,readable));
+        if (readable) strcat(buffer," ");
+        elt = elt->next;
+    }
+    if (readable) buffer[strlen(buffer)-1] = '\0';
+    var->type = S_STR;
+    var->val.pval = buffer;
+    return var;
+}
+
+VAR* b_pr_str(LIST* list)
+{
+    return pr_str(list,true);
+}
+
+VAR* b_str(LIST* list)
+{
+    return pr_str(list,false);
+}
+VAR* prn(LIST* list,bool readable)
+{
+    LIST* elt;
+
+    buffer[0] = '\0';
+    elt = list;
+    while (elt != NULL) {
+        strcat(buffer,print_str(elt->var,readable));
+        strcat(buffer," ");
+        elt = elt->next;
+    }
+    buffer[strlen(buffer)-1] = '\0';
+    printf("%s\n",buffer);
+    return &var_nil;
+}
+
+VAR* b_prn(LIST* list)
+{
+    return prn(list,true);
+}
+
+VAR* b_println(LIST* list)
+{
+    return prn(list,false);
+}
+
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -289,7 +352,11 @@ struct s_builtin core_fn[] =
     {"<",b_lessthanp},
     {"<=",b_lessthaneqp},
     {">",b_greaterthanp},
-    {">=",b_greaterthaneqp}
+    {">=",b_greaterthaneqp},
+    {"pr-str",b_pr_str},
+    {"str",b_str},
+    {"prn",b_prn},
+    {"println",b_println}
 };
  
 /* Insert inbuilt functions into ns namespace and return pointer */
