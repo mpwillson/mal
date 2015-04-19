@@ -37,6 +37,7 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     VAR* rest;
     LIST nil_elt = {&var_nil,NULL};
 
+    /* Initialise new env instance */
     env = (ENV*) malloc(sizeof(ENV));
     env->size = size;
     env->closure = false;
@@ -46,6 +47,10 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     for (i=0;i<size;i++) {
         *sym++ = NULL;
     }
+    /* Run through binds list. Handle & (all subsequent args are bound
+       as a list to the following binds symbol).  Where binds exist
+       without an arg, binds are set to nil.
+    */
     if (binds != NULL) {
         bind_list = binds->val.lval;
         expr_list = exprs->val.lval;

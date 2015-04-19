@@ -226,6 +226,99 @@ VAR* eval_ast(VAR* ast, ENV* env)
     return ast;
 }
 
+VAR* def_form(LIST* elt,ENV* env)
+{
+    VAR* evaled;
+
+    if (elt == NULL) return &var_nil;
+    evaled = eval(elt->next->var,env);
+    env_put(env,elt->var->val.pval,evaled);
+    return evaled;
+}
+
+VAR* let_form(LIST* elt,ENV* env)
+{
+    ENV* new;
+    VAR* eval_list;
+    LIST* env_elt;
+                
+    new = new_env(101,env,NULL,NULL);
+    if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
+        env_elt = elt->var->val.lval;
+        while (env_elt != NULL) {
+            if (env_elt->next == NULL) {
+                error.val.pval = mal_error("value expected");
+                return &error;
+            }
+            eval_list = eval(env_elt->next->var,new);
+            env_put(new,env_elt->var->val.pval,eval_list);
+            env_elt = env_elt->next->next;
+        }
+    }
+    else {
+        error.val.pval = mal_error("list expected");
+        return &error;
+    }
+    if (elt->next != NULL) {
+        eval_list = eval(elt->next->var,new);
+        env_free(new);
+    }
+    else { /* nothing to eval */
+        return &var_nil;
+    }
+    return eval_list;
+}
+
+VAR* if_form(LIST* elt, ENV* env)
+{
+    VAR* eval_list;
+    
+    eval_list = &var_nil;
+    if (elt != NULL) {
+        eval_list = eval(elt->var,env);
+        elt = elt->next;
+        if (eval_list->type != S_NIL &&
+            eval_list->type != S_FALSE) {
+            if (elt != NULL) {
+                eval_list = eval(elt->var,env);
+            }
+            else {
+                return &var_nil;
+            }
+        }
+        else {
+            eval_list = &var_nil;
+            if (elt != NULL) elt = elt->next;
+            if (elt != NULL) eval_list = eval(elt->var,env);
+        }
+    }
+    return eval_list;
+}
+
+VAR* execute_form(VAR* ast,ENV* env)
+{
+    VAR* eval_list;
+    LIST* elt;
+    
+    eval_list = eval_ast(ast,env);
+    if (eval_list->type != S_ERROR) {
+        elt = eval_list->val.lval;
+        if (elt->var->type == S_BUILTIN) {
+            eval_list = elt->var->val.bval(elt->next);
+        }
+        else if (elt->var->type == S_FN) {
+            eval_list = execute_fn(elt->var,elt->next);
+        }
+        else {
+            error.val.pval =
+                mal_error("'%s' not callable",
+                          print_str(elt->var,true));
+            return &error;
+        }
+    }
+    return eval_list;
+}
+
 VAR* eval(VAR* ast,ENV* env)
 {
     VAR* eval_list;
@@ -236,86 +329,24 @@ VAR* eval(VAR* ast,ENV* env)
     if (ast->type == S_LIST && ast->val.lval != NULL) {
         elt = ast->val.lval;
         if (strcmp(elt->var->val.pval,"def!") == 0) {
-            elt = elt->next;
-            eval_list =  eval(elt->next->var,env);
-            env_put(env,elt->var->val.pval,eval_list);
-            return eval_list;
+            return def_form(elt->next,env);
         }
         else if (strcmp(elt->var->val.pval,"let*") == 0) {
-            new = new_env(101,env,NULL,NULL);
-            elt = elt->next;
-            if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
-                env_elt = elt->var->val.lval;
-                while (env_elt != NULL) {
-                    if (env_elt->next == NULL) {
-                        error.val.pval = mal_error("value expected");
-                        return &error;
-                    }
-                    eval_list = eval(env_elt->next->var,new);
-                    env_put(new,env_elt->var->val.pval,eval_list);
-                    env_elt = env_elt->next->next;
-                }
-            }
-            else {
-                error.val.pval = mal_error("list expected");
-                return &error;
-            }
-            if (elt->next != NULL) {
-                eval_list = eval(elt->next->var,new);
-                env_free(new);
-            }
-            else { /* nothing to eval */
-                return &var_nil;
-            }
-            return eval_list;
+            return let_form(elt->next,env);
         }
         else if (strcmp(elt->var->val.pval,"do") == 0) {
             return do_form(elt->next,env);
         }
         else if (strcmp(elt->var->val.pval,"if") == 0) {
-            elt = elt->next;
-            eval_list = &var_nil;
-            if (elt != NULL) {
-                eval_list = eval(elt->var,env);
-                elt = elt->next;
-                if (eval_list->type != S_NIL &&
-                    eval_list->type != S_FALSE) {
-                    if (elt != NULL) {
-                        eval_list = eval(elt->var,env);
-                    }
-                    else {
-                        return &var_nil;
-                    }
-                }
-                else {
-                    eval_list = &var_nil;
-                    if (elt != NULL) elt = elt->next;
-                    if (elt != NULL) eval_list = eval(elt->var,env);
-                }
-            }
-            return eval_list;
+            return if_form(elt->next,env);
         }
         else if (strcmp(elt->var->val.pval,"fn*") == 0) {
             return make_fn(elt->next,env);
         }
-        eval_list = eval_ast(ast,env);
-        if (eval_list->type != S_ERROR) {
-            elt = eval_list->val.lval;
-            if (elt->var->type == S_BUILTIN) {
-                eval_list = elt->var->val.bval(elt->next);
-            }
-            else if (elt->var->type == S_FN) {
-                eval_list = execute_fn(elt->var,elt->next);
-            }
-            else {
-                error.val.pval =
-                    mal_error("'%s' not callable",
-                              print_str(elt->var,true));
-                return &error;
-            }
+        else {
+            return execute_form(ast,env);
         }
-        return eval_list;
-    }
+     }
     else {
         return eval_ast(ast,env);
     }
