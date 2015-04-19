@@ -59,8 +59,10 @@ bool list_equalp(LIST*,LIST*);
 VAR* var_equalp(VAR* v1, VAR* v2)
 {
     bool eq;
-    
-    if (v1->type != v2->type) return &var_false;
+
+    /* all lists types are equal in mal? */
+    if ((!islist(v1->type) && !islist(v2->type)) &&
+         v1->type != v2->type) return &var_false;
     switch (v1->type) {
         case S_INT:
             eq = v1->val.ival == v2->val.ival;
@@ -90,7 +92,6 @@ VAR* var_equalp(VAR* v1, VAR* v2)
     }
     return (eq?&var_true:&var_false);
 }
-
 
 bool list_equalp(LIST* l1, LIST* l2)
 {
@@ -135,7 +136,7 @@ VAR* arith(char type,LIST* list)
     else if ((type == '-' || type == '/') && list != NULL) {
         len = count(list);
         if (len != 1) {
-            result = list->var;
+            result->val.ival = list->var->val.ival;
             elt = list->next;
         }
     }

@@ -197,6 +197,8 @@ VAR* eval_ast(VAR* ast, ENV* env)
     LIST* list = NULL;
     LIST* elt;
 
+    /* printf("eval_ast: ast: %s\n",print_str(ast,true)); */
+    /* env_dump(env); */
     if (ast->type == S_SYM) {
         var = env_get(env,ast->val.pval);
         if (var == NULL) {
@@ -303,7 +305,6 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else if (elt->var->type == S_FN) {
                 eval_list = execute_fn(elt->var,elt->next);
-                return eval_list;
             }
             else {
                 error.val.pval =
@@ -354,8 +355,10 @@ int main(void)
         bufread = readline("user> ");
         at_eof = feof(stdin) || bufread == NULL;
         if (bufread) {
-            fprintf(stdout,"%s\n",rep(bufread,env));
-            if (strlen(bufread) > 0) add_history(bufread);
+            if (strlen(bufread) > 0){
+                add_history(bufread);
+                fprintf(stdout,"%s\n",rep(bufread,env));
+            }
         }
         free(bufread);
     }

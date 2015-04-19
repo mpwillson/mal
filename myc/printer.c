@@ -108,10 +108,10 @@ char* print_str(VAR* var,bool print_readably)
             sprintf(buffer,"false");
             break;
         case S_FN:
-            sprintf(buffer,"#<%x>",(unsigned int)var->val.fval);
+            sprintf(buffer,"#<function %x>",(unsigned int)var->val.fval);
             break;
         case S_BUILTIN:
-            sprintf(buffer,"#<%x>",(unsigned int)var->val.bval);
+            sprintf(buffer,"#<builtin %x>",(unsigned int)var->val.bval);
             break;
         case S_EOF:
             break;

@@ -125,7 +125,11 @@ void env_dump(ENV* env)
                 sp = sp->next;
             }
         }
-    }        
+    }
+    /* if (env->outer != NULL) { */
+    /*     printf("Enclosed by...\n"); */
+    /*     env_dump(env->outer); */
+    /* } */
 }
 
 void env_free(ENV* env)
