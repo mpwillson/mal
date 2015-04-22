@@ -214,11 +214,7 @@ VAR* b_minus(LIST* list)
 
 VAR* b_list(LIST* list)
 {
-    VAR* var = new_var();
-
-    var->type = S_LIST;
-    var->val.lval = list;
-    return var;
+    return list2var(list);
 }
 
 #define S_LTEQ 1

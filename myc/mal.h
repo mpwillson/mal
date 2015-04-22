@@ -66,7 +66,7 @@ struct s_list {
 
 struct s_fn {
     VAR* args;
-    LIST* forms;
+    VAR* forms;
     struct s_env *env;
 };
 
@@ -113,5 +113,6 @@ VAR* new_var(void);
 LIST* append(LIST*,VAR*);
 VAR* insert(VAR*,VAR*);
 char* strsave(char*);
+VAR* list2var(LIST*);
 
 #endif
