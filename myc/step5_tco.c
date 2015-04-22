@@ -46,8 +46,6 @@ char *strsave(char *s)
 	return p;
 }
 
-
-
 LIST* new_elt() {
     LIST* elt;
     
@@ -172,7 +170,7 @@ VAR* eval_ast(VAR*,ENV*);
 
 VAR* do_form(LIST* form,ENV* env)
 {
-    LIST* elt, *new_last = NULL;
+    LIST* elt, *new_list = NULL;
     VAR* result;
     
     if (form == NULL) return &var_nil;
@@ -180,12 +178,11 @@ VAR* do_form(LIST* form,ENV* env)
     /* slice off last element of form */
     elt = form;
     while (elt->next != NULL) {
-        new_last = elt;
+        new_list = append(new_list,elt->var);
         elt = elt->next;
     }
-    if (new_last != NULL) {
-        new_last->next = NULL;
-        eval_ast(list2var(form),env);
+    if (new_list != NULL) {
+        eval_ast(list2var(new_list),env);
     }
     if (DEBUG) printf("do_form2: %s\n",print_str(elt->var,true));
     return elt->var;
@@ -289,7 +286,7 @@ VAR* if_form(LIST* elt, ENV* env)
         if (eval_list->type != S_NIL &&
             eval_list->type != S_FALSE) {
             if (elt != NULL) {
-                eval_list = eval(elt->var,env);
+                eval_list = elt->var; //eval(elt->var,env);
             }
             else {
                 return &var_nil;
@@ -298,7 +295,7 @@ VAR* if_form(LIST* elt, ENV* env)
         else {
             eval_list = &var_nil;
             if (elt != NULL) elt = elt->next;
-            if (elt != NULL) eval_list = eval(elt->var,env);
+            if (elt != NULL) eval_list = elt->var; //eval(elt->var,env);
         }
     }
     return eval_list;
@@ -356,9 +353,11 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else if (strcmp(elt->var->val.pval,"do") == 0) {
                 ast = do_form(elt->next,env);
+                if (DEBUG)
+                    printf("after do: %s\n",print_str(ast,true));
             }
             else if (strcmp(elt->var->val.pval,"if") == 0) {
-                return if_form(elt->next,env);
+                ast = if_form(elt->next,env);
             }
             else if (strcmp(elt->var->val.pval,"fn*") == 0) {
                 return make_fn(elt->next,env);
@@ -384,13 +383,16 @@ VAR* eval(VAR* ast,ENV* env)
                         return &error;
                     }
                 }
+                else {
+                    return eval_list;
+                }
             }
+
         }
         else {
             return eval_ast(ast,env);
         }
     }
-    
 }
 
 VAR* repl_read(char* s)
