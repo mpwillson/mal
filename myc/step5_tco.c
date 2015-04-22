@@ -187,23 +187,6 @@ VAR* do_form(LIST* form,ENV* env)
     if (DEBUG) printf("do_form2: %s\n",print_str(elt->var,true));
     return elt->var;
 }
-    
-/* VAR* execute_fn(VAR* fn, LIST* args) */
-/* { */
-/*     VAR* exprs = new_var(); */
-/*     ENV* env; */
-/*     VAR* evaled_list; */
-
-/*     exprs->type = S_LIST; */
-/*     exprs->val.lval = args; */
-/*     if (DEBUG) printf("execute_fn: %s, with args: %s\n",print_str(fn,true), */
-/*                      print_str(exprs,true)); */
-/*     env = new_env(37,fn->val.fval->env,fn->val.fval->args,exprs); */
-/*     evaled_list = do_form(fn->val.fval->forms,env); */
-/*     free(exprs); */
-/*     env_free(env); */
-/*     return evaled_list; */
-/* } */
 
 /* TDB: Fix memory leaks */
 
@@ -300,30 +283,6 @@ VAR* if_form(LIST* elt, ENV* env)
     }
     return eval_list;
 }
-
-/* VAR* execute_form(VAR* ast,ENV* env) */
-/* { */
-/*     VAR* eval_list; */
-/*     LIST* elt; */
-    
-/*     eval_list = eval_ast(ast,env); */
-/*     if (eval_list->type != S_ERROR) { */
-/*         elt = eval_list->val.lval; */
-/*         if (elt->var->type == S_BUILTIN) { */
-/*             eval_list = elt->var->val.bval(elt->next); */
-/*         } */
-/*         else if (elt->var->type == S_FN) { */
-/*             eval_list = execute_fn(elt->var,elt->next); */
-/*         } */
-/*         else { */
-/*             error.val.pval = */
-/*                 mal_error("'%s' not callable", */
-/*                           print_str(elt->var,true)); */
-/*             return &error; */
-/*         } */
-/*     } */
-/*     return eval_list; */
-/* } */
 
 VAR* eval(VAR* ast,ENV* env)
 {
