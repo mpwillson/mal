@@ -103,6 +103,9 @@ static VAR var_do = {
     S_SYM,"do"
 };
 
+/* For error returns */
+static VAR error = {S_ERROR,NULL};
+
 /* function prototypes */
 char* mal_error(const char *fmt, ...);
 void mal_die(char*);
@@ -114,5 +117,8 @@ LIST* append(LIST*,VAR*);
 VAR* insert(VAR*,VAR*);
 char* strsave(char*);
 VAR* list2var(LIST*);
+VAR* repl_read(char *);
+VAR* eval(VAR*,struct s_env *);
+VAR* eval_ast(VAR*,struct s_env *);
 
 #endif

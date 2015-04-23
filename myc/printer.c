@@ -39,14 +39,16 @@ char *stringify (char *s)
     while (*s != '\0') {
         if (*s == '"' || *s == '\\') {
             *p++ = '\\';
+            s = s+1;
         }
         else if (*s == '\n') {
             *p++ = '\\';
             *p++ = 'n';
-            *s = *s + 1;
-            continue;
+            s = s+1;
         }
-        *p++ = *s++;
+        else {
+            *p++ = *s++;
+        }
     }
     *p = '\0';
     return buf;

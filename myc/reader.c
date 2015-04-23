@@ -58,7 +58,7 @@ int lexer(void)
 	int i = 0, lexsym;
 
 	lextok[0] = '\0';
-	while (ch == ' ' || ch == ',' || ch == '\t') ch = getlexchar();
+	while (ch == ' ' || ch == ',' || ch == '\t' || ch == '\n') ch = getlexchar();
 	if (isdigit(ch)) {
 		lexsym = S_INT;
 		while ((isdigit(ch) || ch == '.') && i < LEXTOKSIZ) {
@@ -237,6 +237,7 @@ VAR* handle_quote(int token_type)
     VAR* quote_type;
     VAR* list;
     VAR* new = new_var();
+    
     LIST* elt;
     
     switch (token_type) {

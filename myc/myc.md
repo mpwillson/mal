@@ -20,3 +20,9 @@ this list to eval_ast, returning the last element as the result.
 However, like (1), I modified the list in-situ, which meant that
 subsequent evaluations steadily trucated the list.  The solution
 was to make a copy of the list and truncate that.
+
+4. The seg fault in (1) occured in malloc, which is mostly caused by
+user abuse.  It turned out I was writing to an unitialised pointer in
+read_atom (reader.c).  Now mal dies with an "out of memory" error
+message. I tracked this down in testing mal on FreeBSD, where mal died
+immediately, on the defintion of the not function. Nice early failure mode!

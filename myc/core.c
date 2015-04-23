@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include "mal.h"
 #include "env.h"
@@ -333,6 +334,81 @@ VAR* b_println(LIST* list)
     return prn(list,false);
 }
 
+VAR* b_read_string(LIST* list)
+{
+    if (list == NULL) return &var_nil;
+    if (list->var->type == S_STR) {
+        return repl_read(list->var->val.pval);
+    }
+    return &var_nil;
+}
+
+#define BUFSZ 1024
+
+VAR* b_slurp(LIST* list)
+{
+    struct stat statbuf;
+    FILE *in;
+    char buf[BUFSZ+1], *slurp_buf, *fn;
+    int nitems, offset;
+    bool eof;
+    VAR* var;
+
+    if (list == NULL) return &var_nil;
+    if (list->var->type == S_STR) {
+        fn = list->var->val.pval;
+        in = fopen(fn,"r");
+        if (in == NULL) {
+            error.val.pval = mal_error("unable to open file: '%s'",fn);
+            return &error;
+        }
+        if (fstat(fileno(in),&statbuf) != 0) {
+            error.val.pval = mal_error("fstat failed for file '%s'",fn);
+            fclose(in);
+            return &error;
+        }
+        /* is this a regular file? */
+        if (!S_ISREG(statbuf.st_mode)) {
+            error.val.pval = mal_error("file '%s' is not a regular file",fn);
+            fclose(in);
+            return &error;
+        }
+        /* acquire memory to hold file contents */
+        slurp_buf = (char *) malloc(statbuf.st_size+1);
+        if (slurp_buf == NULL) {
+            error.val.pval = mal_error("no memory for slurp buffer");
+            fclose(in);
+            return &error;
+        }
+        /* read in contents of file */
+        eof = false;
+        offset = 0;
+        while (!eof) {
+            nitems = fread(buf,sizeof(char),BUFSZ,in);
+            eof = (nitems != BUFSZ);
+            memcpy(slurp_buf+offset,buf,nitems);
+            offset += nitems;
+            if (offset > statbuf.st_size) {
+                error.val.pval = mal_error("internal error - buffer overflow");
+                free(slurp_buf);
+                fclose(in);
+                return &error;
+            }
+        }
+        slurp_buf[statbuf.st_size] = '\0';
+        var = new_var();
+        var->type = S_STR;
+        var->val.pval = slurp_buf;
+        fclose(in);
+        return var;
+    }
+    return &var_nil;   
+}
+   
+VAR* b_eval(LIST* list)
+{
+    return eval(list->var,ns_get());
+}
 
 struct s_builtin core_fn[] =
 {
@@ -352,9 +428,14 @@ struct s_builtin core_fn[] =
     {"pr-str",b_pr_str},
     {"str",b_str},
     {"prn",b_prn},
-    {"println",b_println}
+    {"println",b_println},
+    {"read-string",b_read_string},
+    {"slurp",b_slurp},
+    {"eval",b_eval}
 };
- 
+
+static ENV* repl_env = NULL;
+
 /* Insert inbuilt functions into ns namespace and return pointer */
 ENV* ns_get(void)
 {
@@ -362,12 +443,15 @@ ENV* ns_get(void)
     VAR* var;
     int i;
 
+    if (repl_env != NULL) return repl_env; /* only one exists */
+    
     for (i=0;i<(sizeof(core_fn)/sizeof(struct s_builtin));i++) {
         var = new_var();
         var->type = S_BUILTIN;
         var->val.bval = core_fn[i].fn;
         env_put(env,core_fn[i].name,var);
     }
+    repl_env = env;
     return env;
 }
 
