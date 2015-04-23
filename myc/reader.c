@@ -202,9 +202,8 @@ char* list_close(int type)
 /* Return atom, created from type and value */
 VAR* read_atom(int type,char *s)
 {
-    VAR *new;;
+    VAR *new;
 
-    new->type = type;
     switch (type) {
         case S_INT:
             new = new_var();
