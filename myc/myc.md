@@ -1,0 +1,22 @@
+Mal Implementation 
+==================
+
+1. When implementing minus and divide, I reused an operand var as the
+result.  This lead to a very hard-to-trackdown bug, which manifested
+itself in step 4 fib function. The fib argument became less than zero,
+which caused mal to seg fault.
+
+2. When adding TCO, I noticed that the do_form code used eval,
+whereas the guide stated that eval_ast should be called.  I'd
+implemented do by interating of the do form elements and calling
+eval on each one, only returning the value of the last element.
+Replacing eval with eval_ast in this approach did not work.  The
+solution was to call eval_ast with the whole do form (less the do
+of course) and then pick out the last value in the returned list.
+
+3. Related to the above, when I turned the above approach into
+TCO, I truncated the do form before the last element and passed
+this list to eval_ast, returning the last element as the result.
+However, like (1), I modified the list in-situ, which meant that
+subsequent evaluations steadily trucated the list.  The solution
+was to make a copy of the list and truncate that.
