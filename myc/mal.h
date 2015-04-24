@@ -27,6 +27,7 @@
 #define S_FALSE 21
 #define S_FN 22
 #define S_BUILTIN 23
+#define S_COMMENT 24
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
                       t == S_HASHMAP)

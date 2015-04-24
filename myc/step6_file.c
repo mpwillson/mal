@@ -15,9 +15,8 @@
 #define BUFSIZE 1024
 
 #define DEBUG 0
-
+               
 static char errmsg[BUFSIZE];
-
 
 void mal_die(char* msg)
 {
@@ -267,7 +266,7 @@ VAR* if_form(LIST* elt, ENV* env)
         if (eval_list->type != S_NIL &&
             eval_list->type != S_FALSE) {
             if (elt != NULL) {
-                eval_list = elt->var; //eval(elt->var,env);
+                eval_list = elt->var;
             }
             else {
                 return &var_nil;
@@ -276,7 +275,7 @@ VAR* if_form(LIST* elt, ENV* env)
         else {
             eval_list = &var_nil;
             if (elt != NULL) elt = elt->next;
-            if (elt != NULL) eval_list = elt->var; //eval(elt->var,env);
+            if (elt != NULL) eval_list = elt->var;
         }
     }
     return eval_list;
@@ -310,8 +309,6 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else if (strcmp(elt->var->val.pval,"do") == 0) {
                 ast = do_form(elt->next,env);
-                if (DEBUG)
-                    printf("after do: %s\n",print_str(ast,true));
             }
             else if (strcmp(elt->var->val.pval,"if") == 0) {
                 ast = if_form(elt->next,env);
@@ -319,9 +316,6 @@ VAR* eval(VAR* ast,ENV* env)
             else if (strcmp(elt->var->val.pval,"fn*") == 0) {
                 return make_fn(elt->next,env);
             }
-            /* else if (strcmp(elt->var->val.pval,"eval") == 0) { */
-            /*     ast = elt->next->var; */
-            /* } */
             else {
                 eval_list = eval_ast(ast,env);
                 if (eval_list->type != S_ERROR) {
@@ -377,7 +371,26 @@ char* rep(char* s,ENV* env)
     return output;
 }
 
-int main(void)
+int execute_program(char* filename,int nargs,char* argv[],ENV* env)
+{
+    char cmd[BUFSIZE+1];
+    LIST* list = NULL;
+    VAR* var;
+
+    sprintf(cmd,"(load-file \"%s\")",filename);
+    while (nargs > 0) {
+        var = new_var();
+        var->type = S_STR;
+        var->val.pval = *argv++;
+        list = append(list,var);
+        nargs--;
+    }
+    env_put(env,"*ARGV*",list2var(list));
+    rep(cmd,env);
+    return 0;
+}
+            
+int main(int argc, char* argv[])
 {
     char* bufread;
     bool at_eof = false;
@@ -386,20 +399,28 @@ int main(void)
     /* define mal functions */
     rep("(def! not (fn* [x] (if x false true)))",env);
     rep("(def! load-file (fn* (f) (eval (read-string "
-        "(str \"(do\" (slurp f) \")\")))))",env);
+        "(str \"(do\" (slurp f) \"\\n)\")))))",env);
+
+    env_put(env,"*ARGV*",list2var(NULL));
     
-    while (!at_eof) {
-        bufread = readline("user> ");
-        at_eof = feof(stdin) || bufread == NULL;
-        if (bufread) {
-            if (strlen(bufread) > 0){
-                add_history(bufread);
-                fprintf(stdout,"%s\n",rep(bufread,env));
-            }
-        }
-        free(bufread);
+    /* execute mal program, if found */
+    if (argc > 1) {
+        execute_program(argv[1],(argc-2),argv+2,env);
     }
-    env_free(env);
-    fprintf(stdout,"\n");
-    return 0;
+    else {
+        while (!at_eof) {
+            bufread = readline("user> ");
+            at_eof = feof(stdin) || bufread == NULL;
+            if (bufread) {
+                if (strlen(bufread) > 0){
+                    add_history(bufread);
+                    fprintf(stdout,"%s\n",rep(bufread,env));
+                }
+            }
+            free(bufread);
+        }
+        env_free(env);
+        fprintf(stdout,"\n");
+    }
+    return EXIT_SUCCESS;
 }

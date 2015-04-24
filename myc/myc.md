@@ -26,3 +26,12 @@ user abuse.  It turned out I was writing to an unitialised pointer in
 read_atom (reader.c).  Now mal dies with an "out of memory" error
 message. I tracked this down in testing mal on FreeBSD, where mal died
 immediately, on the defintion of the not function. Nice early failure mode!
+
+5. Comment handling in step 6 caused me a lot of grief.  I wanted to
+pass comments back up from the lexer, rather than completely ignoring
+them, but had to change read_list slightly so that comment vars were
+never added to the list under construction. The other issue concerned
+the situation where a comment was the final line of a program file and
+did not have trailing newline.  In the end I amended the definition of
+load-file to place an extra newline after the slurp to protect the
+closing parenthesis of the do form.

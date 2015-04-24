@@ -148,9 +148,14 @@ int lexer(void)
         }
     }
     else if (ch == ';') {
-        lextok[0] = '\0';
-        lexsym = S_EOF;
-    }
+		while (ch != '\n' && ch != EOF && ch != '\0' && i < LEXTOKSIZ) {
+			lextok[i++] = ch;
+			ch = getlexchar();
+		}
+		lextok[i] = '\0';
+		ungetlexchar(ch);
+		lexsym = S_COMMENT;
+	}
     else if (ch == '@') {
         lexsym = S_DEREF;
         strcpy(lextok,"deref");
@@ -169,7 +174,7 @@ int lexer(void)
 		ungetlexchar(ch);
 		lexsym = S_UNDEF;
 	}
-    return lexsym;
+     return lexsym;
 }
 
 char* list_open(int type)
@@ -293,12 +298,14 @@ VAR* handle_meta()
 VAR* read_list(int type,char close)
 {
     LIST* list = NULL;
-    VAR* var = new_var();
+    VAR* var;
     int token_type;
 
     token_type = lexer();
     while (token_type != S_EOE && token_type != S_EOF && token_type != close) {
-        list = append(list,read_form(token_type));
+        var = read_form(token_type);
+        if (var->type != S_COMMENT) list = append(list,var);
+        //list = append(list,read_form(token_type));
         token_type = lexer();
     }
     if (type != S_ROOT && token_type != close) {
@@ -307,6 +314,7 @@ VAR* read_list(int type,char close)
                                   close);
     }
     else {
+        var = new_var();
         var->type = type;
         var->val.lval = list;
     }
@@ -342,6 +350,14 @@ VAR* read_form(int token_type)
         case S_USTR:
             var->type = S_ERROR;
             var->val.pval = mal_error("unterminated string");
+            break;
+        case S_COMMENT:
+            //var = read_form(lexer());
+            var->type = S_COMMENT;
+            var->val.pval = strsave(lextok);
+            break;
+        case S_EOF:
+            var = &var_nil;
             break;
         default:
             var = read_atom(token_type,lextok);

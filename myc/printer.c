@@ -39,16 +39,14 @@ char *stringify (char *s)
     while (*s != '\0') {
         if (*s == '"' || *s == '\\') {
             *p++ = '\\';
-            s = s+1;
         }
         else if (*s == '\n') {
             *p++ = '\\';
             *p++ = 'n';
-            s = s+1;
+            s++;
+            continue;
         }
-        else {
-            *p++ = *s++;
-        }
+        *p++ = *s++;
     }
     *p = '\0';
     return buf;
@@ -57,7 +55,7 @@ char *stringify (char *s)
 char* print_str(VAR* var,bool print_readably)
 {
     LIST* elt, *oelt;
-    char tok[LEXTOKSIZ+1];
+    char tok[BUFSIZE+1];
     char *buffer = (char *) malloc(BUFSIZE+1);
     bool first = true;
 
