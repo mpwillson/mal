@@ -410,6 +410,23 @@ VAR* b_eval(LIST* list)
     return eval(list->var,ns_get());
 }
 
+VAR* b_cons(LIST* list)
+{
+    VAR* var;
+    LIST* elt;
+
+    if (list ==  NULL) return &var_nil;
+    var = list->var;
+    elt = list->next;
+    if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
+        return insert(var,elt->var);
+    }
+    else {
+        error.val.pval = mal_error("cons target not a list");
+        return &error;
+    }
+}
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -431,7 +448,8 @@ struct s_builtin core_fn[] =
     {"println",b_println},
     {"read-string",b_read_string},
     {"slurp",b_slurp},
-    {"eval",b_eval}
+    {"eval",b_eval},
+    {"cons",b_cons}
 };
 
 static ENV* repl_env = NULL;
