@@ -279,23 +279,24 @@ VAR* b_greaterthaneqp(LIST* list)
     return compare(S_GTEQ,list);
 }
 
-static char buffer[1024];
 
 VAR* pr_str(LIST* list,bool readable)
 {
     LIST* elt;
     VAR* var = new_var();
+    bool top_level = true;
+    char* buffer = NULL;
 
-    buffer[0] = '\0';
     elt = list;
     while (elt != NULL) {
-        strcat(buffer,print_str(elt->var,readable));
+        buffer = print_str(elt->var,readable,top_level);
+        top_level = false;
         if (readable) strcat(buffer," ");
         elt = elt->next;
     }
-    if (readable) buffer[strlen(buffer)-1] = '\0';
+    if (readable && buffer) buffer[strlen(buffer)-1] = '\0';
     var->type = S_STR;
-    var->val.pval = buffer;
+    var->val.pval = (buffer?strsave(buffer):strsave(""));
     return var;
 }
 
@@ -308,19 +309,27 @@ VAR* b_str(LIST* list)
 {
     return pr_str(list,false);
 }
+
 VAR* prn(LIST* list,bool readable)
 {
     LIST* elt;
+    bool top_level = true;
+    char* buffer = NULL;
 
-    buffer[0] = '\0';
     elt = list;
     while (elt != NULL) {
-        strcat(buffer,print_str(elt->var,readable));
+        buffer = print_str(elt->var,readable,top_level);
+        top_level= false;
         strcat(buffer," ");
         elt = elt->next;
     }
-    buffer[strlen(buffer)-1] = '\0';
-    printf("%s\n",buffer);
+    if (buffer) {
+        buffer[strlen(buffer)-1] = '\0';
+        printf("%s\n",buffer);
+    }
+    else {
+        printf("\n");
+    }
     return &var_nil;
 }
 

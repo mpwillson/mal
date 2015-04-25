@@ -171,7 +171,7 @@ VAR* do_form(LIST* form,ENV* env)
     VAR* result;
     
     if (form == NULL) return &var_nil;
-    if (DEBUG) printf("do_form: %s\n",print_str(form->var,true));
+    if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
     /* slice off last element of form */
     elt = form;
     while (elt->next != NULL) {
@@ -181,7 +181,7 @@ VAR* do_form(LIST* form,ENV* env)
     if (new_list != NULL) {
         eval_ast(list2var(new_list),env);
     }
-    if (DEBUG) printf("do_form2: %s\n",print_str(elt->var,true));
+    if (DEBUG) printf("do_form2: %s\n",print_str(elt->var,true,true));
     return elt->var;
 }
 
@@ -194,7 +194,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
     LIST* list = NULL;
     LIST* elt;
 
-    if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true));
+    if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
     if (ast->type == S_SYM) {
         var = env_get(env,ast->val.pval);
         if (var == NULL) {
@@ -288,7 +288,7 @@ VAR* eval(VAR* ast,ENV* env)
     FN* fn;
 
     while (true) {
-        if (DEBUG) printf("eval: %s\n",print_str(ast,true));
+        if (DEBUG) printf("eval: %s\n",print_str(ast,true,true));
         if (ast->type == S_LIST && ast->val.lval != NULL) {
             elt = ast->val.lval;
             if (strcmp(elt->var->val.pval,"def!") == 0) {
@@ -333,7 +333,7 @@ VAR* eval(VAR* ast,ENV* env)
                     }
                     else {
                         error.val.pval = mal_error("'%s' not callable",
-                                               print_str(elt->var,true));
+                                               print_str(elt->var,true,true));
                         return &error;
                     }
                 }
@@ -360,7 +360,7 @@ VAR* repl_read(char* s)
 
 char* print(VAR* var)
 {
-    return print_str(var,true);
+    return print_str(var,true,true);
 }
      
 char* rep(char* s,ENV* env)
