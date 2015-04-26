@@ -436,6 +436,60 @@ VAR* b_cons(LIST* list)
     }
 }
 
+/* Return new list, created from argument.  Vars that point to data
+ * (e.g. strings) continue to point to the original data. */
+LIST* copy_list(LIST* list)
+{
+    LIST* new_list = NULL;
+    LIST* elt;
+    VAR* var;
+
+    elt = list;
+    while (elt) {
+        var = new_var();
+        var->type = elt->var->type;
+        var->val = elt->var->val;
+        new_list = append(new_list,var);
+        elt = elt->next;
+    }
+    return new_list;
+}
+
+LIST* concat(LIST* l1, LIST* l2)
+{
+    LIST* elt;
+
+    elt = l1;
+    while (elt->next) {
+        elt = elt->next;
+    }
+    elt->next = l2;
+    return l1;
+}
+
+VAR* b_concat(LIST* list)
+{
+    LIST* new = NULL;
+    LIST* elt;
+    VAR* var = new_var();
+    
+    elt = list;
+    while (elt) {
+        if (islist(elt->var->type)) {
+            if (new) {
+                new = concat(new,copy_list(elt->var->val.lval));
+            }
+            else {
+                new = copy_list(elt->var->val.lval);
+            }
+        }
+        elt = elt->next;
+    }
+    var->type = S_LIST;
+    var->val.lval = new;
+    return var;
+}
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -458,7 +512,8 @@ struct s_builtin core_fn[] =
     {"read-string",b_read_string},
     {"slurp",b_slurp},
     {"eval",b_eval},
-    {"cons",b_cons}
+    {"cons",b_cons},
+    {"concat",b_concat}
 };
 
 static ENV* repl_env = NULL;
