@@ -419,6 +419,18 @@ VAR* b_eval(LIST* list)
     return eval(list->var,ns_get());
 }
 
+VAR* cons(VAR* var,LIST* list)
+{
+    LIST* elt = new_elt();
+    VAR* new = new_var();
+
+    elt->var = var;
+    elt->next = list;
+    new->type = S_LIST;
+    new->val.lval = elt;
+    return new;
+}
+
 VAR* b_cons(LIST* list)
 {
     VAR* var;
@@ -428,7 +440,7 @@ VAR* b_cons(LIST* list)
     var = list->var;
     elt = list->next;
     if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
-        return insert(var,elt->var);
+        return cons(var,elt->var->val.lval);
     }
     else {
         error.val.pval = mal_error("cons target not a list");
