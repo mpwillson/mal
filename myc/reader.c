@@ -240,7 +240,7 @@ VAR* read_atom(int type,char *s)
 VAR* handle_quote(int token_type)
 {
     VAR* quote_type;
-    VAR* list;
+    VAR* form;
     VAR* new = new_var();
     
     LIST* elt;
@@ -262,19 +262,19 @@ VAR* handle_quote(int token_type)
             quote_type = &deref;
             break;
     }
-    list = read_form(lexer());
-    if (list->type == S_ERROR) {
-        return list;
+    form = read_form(lexer());
+    if (form->type == S_ERROR) {
+        return form;
     }
-    else if (list->type != S_LIST) {
-        /* turn into list, so quote atom can be inserted */
-        elt = append(NULL,list);
-        new->type = S_LIST;
-        new->val.lval = elt;
-        return insert(quote_type,new);
+    else if (form->type != S_LIST) {
+        elt = append(append(NULL,quote_type),form);
+        return list2var(elt);
     }
     else {
-        return insert(quote_type,list);
+        elt = new_elt();
+        elt->var = quote_type;
+        elt->next = NULL;
+        return list2var(append(elt,form));
     }
 }
 
