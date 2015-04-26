@@ -133,7 +133,8 @@ void env_dump(ENV* env)
             sp = env->sym[i];
             while (sp != NULL) {
                 printf("[%d] %s: type %d, value: %s\n",
-                       i,sp->name,sp->value->type,print_str(sp->value,true));
+                       i,sp->name,sp->value->type,
+                       print_str(sp->value,true,true));
                 sp = sp->next;
             }
         }
