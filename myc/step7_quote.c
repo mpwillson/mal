@@ -117,6 +117,11 @@ void free_list(LIST* list)
     }
 }
 
+bool is_pair(LIST *list)
+{
+    return (list && list->next);
+}
+
 FN* new_fn()
 {
     FN* fn;
@@ -174,8 +179,6 @@ VAR* do_form(LIST* form,ENV* env)
     if (DEBUG) printf("do_form2: %s\n",print_str(elt->var,true,true));
     return elt->var;
 }
-
-/* TDB: Fix memory leaks */
 
 VAR* eval_ast(VAR* ast, ENV* env)
 {
@@ -271,6 +274,13 @@ VAR* if_form(LIST* elt, ENV* env)
     return eval_list;
 }
 
+VAR* handle_quasiquote(LIST* list,ENV* env)
+{
+    printf("quasiquote: %s\n",print_str(list->var,true,true));
+    return &var_nil;
+}
+
+    
 VAR* eval(VAR* ast,ENV* env)
 {
     VAR* eval_list;
@@ -308,6 +318,9 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else if (strcmp(elt->var->val.pval,"quote") == 0) {
                  return (elt->next?elt->next->var:&var_nil);
+            }
+            else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
+                ast = handle_quasiquote(elt->next,env);
             }
             else {
                 eval_list = eval_ast(ast,env);
