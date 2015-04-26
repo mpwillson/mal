@@ -115,7 +115,6 @@ void free_list(LIST*);
 LIST* new_elt(void);
 VAR* new_var(void);
 LIST* append(LIST*,VAR*);
-VAR* insert(VAR*,VAR*);
 char* strsave(char*);
 VAR* list2var(LIST*);
 VAR* repl_read(char *);

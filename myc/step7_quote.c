@@ -76,16 +76,6 @@ VAR* list2var(LIST* list)
     return var;
 }
 
-VAR* insert(VAR* var, VAR* list)
-{
-    LIST* elt = new_elt();
-
-    elt->var = var;
-    elt->next = list->val.lval;
-    list->val.lval = elt;
-    return list;
-}
-
 LIST* append(LIST* list,VAR* var)
 {
     LIST *elt,*current;
@@ -315,6 +305,9 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else if (strcmp(elt->var->val.pval,"fn*") == 0) {
                 return make_fn(elt->next,env);
+            }
+            else if (strcmp(elt->var->val.pval,"quote") == 0) {
+                 return (elt->next?elt->next->var:&var_nil);
             }
             else {
                 eval_list = eval_ast(ast,env);
