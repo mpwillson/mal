@@ -15,6 +15,39 @@
 #define BUFSIZE 1024
 
 #define DEBUG 0
+
+/* Define atoms */
+VAR quote = {
+    S_SYM,"quote"
+};
+VAR quasiquote = {
+    S_SYM,"quasiquote"
+};
+VAR unquote = {
+    S_SYM,"unquote"
+};
+VAR splice = {
+    S_SYM,"splice-unquote"
+};
+VAR deref = {
+    S_SYM,"deref"
+};
+VAR meta = {
+    S_SYM,"with-meta"
+};
+VAR var_nil = {
+    S_NIL,NULL
+};
+VAR var_true = {
+    S_TRUE,NULL
+};
+VAR var_false = {
+    S_FALSE,NULL
+};
+
+/* For error returns */
+VAR error = {S_ERROR,NULL};
+
                
 static char errmsg[BUFSIZE];
 
@@ -117,11 +150,6 @@ void free_list(LIST* list)
     }
 }
 
-bool is_pair(LIST *list)
-{
-    return (list && list->next);
-}
-
 FN* new_fn()
 {
     FN* fn;
@@ -178,41 +206,6 @@ VAR* do_form(LIST* form,ENV* env)
     }
     if (DEBUG) printf("do_form2: %s\n",print_str(elt->var,true,true));
     return elt->var;
-}
-
-VAR* eval_ast(VAR* ast, ENV* env)
-{
-    VAR* var, *evaled_var;
-    VAR* list_var = new_var();
-    LIST* list = NULL;
-    LIST* elt;
-
-    if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
-    if (ast->type == S_SYM) {
-        var = env_get(env,ast->val.pval);
-        if (var == NULL) {
-            error.val.pval = mal_error("'%s' not found",ast->val.pval);
-            return &error;
-        }
-        return var;
-    }
-    else if (islist(ast->type)) { 
-        elt = ast->val.lval;
-        while (elt != NULL) {
-            evaled_var = eval(elt->var,env);
-            if (evaled_var->type == S_ERROR) {
-                return evaled_var;
-            }
-            else {
-                list = append(list,evaled_var);
-            }
-            elt = elt->next;
-        }
-        list_var->type = ast->type;
-        list_var->val.lval = list;
-        return list_var;
-    }
-    return ast;
 }
 
 VAR* def_form(LIST* elt,ENV* env)
@@ -274,12 +267,60 @@ VAR* if_form(LIST* elt, ENV* env)
     return eval_list;
 }
 
+bool is_pair(VAR* var)
+{
+    return (islist(var->type) && var->val.lval);
+}
+
 VAR* handle_quasiquote(LIST* list,ENV* env)
 {
+    LIST* elt;
+    
     printf("quasiquote: %s\n",print_str(list->var,true,true));
+    if (!is_pair(list->var)) {
+        return list2var(append(append(NULL,&quote),list->var));
+    }
+    elt = list->var->val.lval;
+    if (elt->var == &unquote) {
+        return (elt->next?elt->next->var:&var_nil);
+    }
     return &var_nil;
 }
 
+VAR* eval_ast(VAR* ast, ENV* env)
+{
+    VAR* var, *evaled_var;
+    VAR* list_var = new_var();
+    LIST* list = NULL;
+    LIST* elt;
+
+    if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
+    if (ast->type == S_SYM) {
+        var = env_get(env,ast->val.pval);
+        if (var == NULL) {
+            error.val.pval = mal_error("'%s' not found",ast->val.pval);
+            return &error;
+        }
+        return var;
+    }
+    else if (islist(ast->type)) { 
+        elt = ast->val.lval;
+        while (elt != NULL) {
+            evaled_var = eval(elt->var,env);
+            if (evaled_var->type == S_ERROR) {
+                return evaled_var;
+            }
+            else {
+                list = append(list,evaled_var);
+            }
+            elt = elt->next;
+        }
+        list_var->type = ast->type;
+        list_var->val.lval = list;
+        return list_var;
+    }
+    return ast;
+}
     
 VAR* eval(VAR* ast,ENV* env)
 {

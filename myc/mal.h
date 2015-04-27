@@ -71,41 +71,17 @@ struct s_fn {
     struct s_env *env;
 };
 
-
-/* Pre-defined VARs */
-static VAR quote = {
-    S_SYM,"quote"
-};
-static VAR quasiquote = {
-    S_SYM,"quasiquote"
-};
-static VAR unquote = {
-    S_SYM,"unquote"
-};
-static VAR splice = {
-    S_SYM,"splice-unquote"
-};
-static VAR deref = {
-    S_SYM,"deref"
-};
-static VAR meta = {
-    S_SYM,"with-meta"
-};
-static VAR var_nil = {
-    S_NIL,NULL
-};
-static VAR var_true = {
-    S_TRUE,NULL
-};
-static VAR var_false = {
-    S_FALSE,NULL
-};
-static VAR var_do = {
-    S_SYM,"do"
-};
-
-/* For error returns */
-static VAR error = {S_ERROR,NULL};
+/* Declarations for pre-defined atoms */
+extern VAR quote;
+extern VAR quasiquote;
+extern VAR unquote;
+extern VAR splice;
+extern VAR deref;
+extern VAR meta;
+extern VAR var_nil;
+extern VAR var_true;
+extern VAR var_false;
+extern VAR error;
 
 /* function prototypes */
 char* mal_error(const char *fmt, ...);

@@ -266,15 +266,8 @@ VAR* handle_quote(int token_type)
     if (form->type == S_ERROR) {
         return form;
     }
-    else if (form->type != S_LIST) {
-        elt = append(append(NULL,quote_type),form);
-        return list2var(elt);
-    }
     else {
-        elt = new_elt();
-        elt->var = quote_type;
-        elt->next = NULL;
-        return list2var(append(elt,form));
+        return list2var(append(append(NULL,quote_type),form));
     }
 }
 
@@ -283,16 +276,13 @@ VAR* handle_meta()
     VAR* meta_form = read_form(lexer());
     VAR* object_form = read_form(lexer());
     LIST* new = NULL;
-    VAR* var = new_var();
 
     if (meta_form->type == S_ERROR) return meta_form;
     if (object_form->type == S_ERROR) return object_form;
     new = append(new,&meta);
     new = append(new,object_form);
     new = append(new,meta_form);
-    var->type = S_LIST;
-    var->val.lval = new;
-    return var;
+    return list2var(new);
 }
 
 VAR* read_list(int type,char close)
