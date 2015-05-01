@@ -14,7 +14,7 @@
     
 #define BUFSIZE 1024
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* Define atoms */
 VAR quote = {
@@ -272,19 +272,52 @@ bool is_pair(VAR* var)
     return (islist(var->type) && var->val.lval);
 }
 
-VAR* handle_quasiquote(LIST* list,ENV* env)
+VAR* first(VAR* var)
 {
-    LIST* elt;
-    
+    if (is_pair(var))
+        return var->val.lval->var;
+    return &var_nil;
+}
+
+VAR* second(VAR* var)
+{
+    if (is_pair(var) && var->val.lval->next)
+        return var->val.lval->next->var;
+    return &var_nil;
+}
+
+VAR* handle_quasiquote(LIST* list)
+{
+    LIST* elt, *new_list = NULL;
+    VAR* var, *operator;
+    static VAR cons = {S_SYM,"cons"};
+    static VAR concat = {S_SYM,"concat"};
+
+    if (list == NULL) return &var_nil;
     printf("quasiquote: %s\n",print_str(list->var,true,true));
     if (!is_pair(list->var)) {
         return list2var(append(append(NULL,&quote),list->var));
     }
-    elt = list->var->val.lval;
-    if (elt->var == &unquote) {
-        return (elt->next?elt->next->var:&var_nil);
+    if ((first(list->var)) == &unquote ) {
+        printf("qq: unquote: %s\n,",
+               print_str(first(first(list->var)),true,true));
+        return second(list->var);
     }
-    return &var_nil;
+    if (first(first(list->var)) == &splice){
+        var = second(first(list->var));
+        operator = &concat;
+    } else {
+        var = handle_quasiquote(list->var->val.lval);
+        operator = &cons;
+    }
+    list = list->var->val.lval->next;
+    printf("qq: op: %s\n",print_str(operator,true,true));
+    if (list) printf("qq: list: %s\n",print_str(list->var,true,true));
+    new_list = append(NULL,handle_quasiquote(list));
+    new_list = append(append(append(NULL,operator),var),list2var(new_list));
+    var = list2var(new_list);
+    if (DEBUG) printf("qq: %s\n",print_str(var,true,true));
+    return var;
 }
 
 VAR* eval_ast(VAR* ast, ENV* env)
@@ -361,7 +394,7 @@ VAR* eval(VAR* ast,ENV* env)
                  return (elt->next?elt->next->var:&var_nil);
             }
             else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
-                ast = handle_quasiquote(elt->next,env);
+                ast = handle_quasiquote(elt->next);
             }
             else {
                 eval_list = eval_ast(ast,env);

@@ -439,8 +439,11 @@ VAR* b_cons(LIST* list)
     if (list ==  NULL) return &var_nil;
     var = list->var;
     elt = list->next;
-    if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
+    if (elt && (elt->var->type == S_LIST || elt->var->type == S_VECTOR)) {
         return cons(var,elt->var->val.lval);
+    }
+    else if (!elt) {
+        return cons(var,NULL);
     }
     else {
         error.val.pval = mal_error("cons target not a list");

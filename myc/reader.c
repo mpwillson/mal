@@ -295,7 +295,6 @@ VAR* read_list(int type,char close)
     while (token_type != S_EOE && token_type != S_EOF && token_type != close) {
         var = read_form(token_type);
         if (var->type != S_COMMENT) list = append(list,var);
-        //list = append(list,read_form(token_type));
         token_type = lexer();
     }
     if (type != S_ROOT && token_type != close) {
