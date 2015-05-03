@@ -288,8 +288,8 @@ VAR* second(VAR* var)
 
 VAR* handle_quasiquote(VAR* ast)
 {
-    LIST* elt, *new_list = NULL;
-    VAR* var, *operator,*vector;
+    LIST *elt, *new_list = NULL;
+    VAR *var, *operator, *rest;
     static VAR cons = {S_SYM,"cons"};
     static VAR concat = {S_SYM,"concat"};
 
@@ -304,24 +304,21 @@ VAR* handle_quasiquote(VAR* ast)
         var = second(first(ast));
         if (DEBUG) printf("splice: %s\n",print_str(var,true,true));
         operator = &concat;
-        elt = ast->val.lval->next;
     } else {
         var = handle_quasiquote(first(ast));
         operator = &cons;
-        elt = ast->val.lval->next;
     }
+    elt = ast->val.lval->next; /* remainder of ast */
     if (DEBUG && elt) printf("qq: recursive arg: %s\n",
                              print_str(list2var(elt),true,true));
     if (elt) {
         new_list = append(new_list,handle_quasiquote(list2var(elt)));
-        vector = new_list->var;
+        rest = new_list->var;
     }
     else {
-        vector = new_var();
-        vector->type = S_LIST;
-        vector->val.lval = NULL;
+        rest = list2var(NULL);
     }
-    new_list = append(append(append(NULL,operator),var),vector);
+    new_list = append(append(append(NULL,operator),var),rest);
     var = list2var(new_list);
     if (DEBUG) printf("qq: exit %s\n",print_str(var,true,true));
     return var;

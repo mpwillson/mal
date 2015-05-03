@@ -39,4 +39,9 @@ closing parenthesis of the do form.
 6. Step 7 (quoting) took me an age.  It wasn't until I wrote
 supporting functions for access to list elements (first and second)
 and realised that handle_quasiquote should take a VAR as the argument,
-not a list element, that I got my head around it.
+not a list element, that I got my head around it. I was also confused
+by the guidance for implementation.  When dealing with remaing
+elements to be passed to the recursive call of handle_quasiquote, was
+that element by element and formating a list of results, or by passing
+the remaing list?  From the way that splice-unquote was detected, the
+latter seemed to be the approach.
