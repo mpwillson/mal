@@ -14,7 +14,7 @@
     
 #define BUFSIZE 1024
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Define atoms */
 VAR quote = {
@@ -286,37 +286,44 @@ VAR* second(VAR* var)
     return &var_nil;
 }
 
-VAR* handle_quasiquote(LIST* list)
+VAR* handle_quasiquote(VAR* ast)
 {
     LIST* elt, *new_list = NULL;
-    VAR* var, *operator;
+    VAR* var, *operator,*vector;
     static VAR cons = {S_SYM,"cons"};
     static VAR concat = {S_SYM,"concat"};
 
-    if (list == NULL) return &var_nil;
-    printf("quasiquote: %s\n",print_str(list->var,true,true));
-    if (!is_pair(list->var)) {
-        return list2var(append(append(NULL,&quote),list->var));
+    if (DEBUG) printf("qq entry: %s\n",print_str(ast,true,true));
+    if (!is_pair(ast)) {
+        return list2var(append(append(NULL,&quote),ast));
     }
-    if ((first(list->var)) == &unquote ) {
-        printf("qq: unquote: %s\n,",
-               print_str(first(first(list->var)),true,true));
-        return second(list->var);
+    if ((first(ast)) == &unquote ) {
+        return second(ast);
     }
-    if (first(first(list->var)) == &splice){
-        var = second(first(list->var));
+    if (first(first(ast)) == &splice){
+        var = second(first(ast));
+        if (DEBUG) printf("splice: %s\n",print_str(var,true,true));
         operator = &concat;
+        elt = ast->val.lval->next;
     } else {
-        var = handle_quasiquote(list->var->val.lval);
+        var = handle_quasiquote(first(ast));
         operator = &cons;
+        elt = ast->val.lval->next;
     }
-    list = list->var->val.lval->next;
-    printf("qq: op: %s\n",print_str(operator,true,true));
-    if (list) printf("qq: list: %s\n",print_str(list->var,true,true));
-    new_list = append(NULL,handle_quasiquote(list));
-    new_list = append(append(append(NULL,operator),var),list2var(new_list));
+    if (DEBUG && elt) printf("qq: recursive arg: %s\n",
+                             print_str(list2var(elt),true,true));
+    if (elt) {
+        new_list = append(new_list,handle_quasiquote(list2var(elt)));
+        vector = new_list->var;
+    }
+    else {
+        vector = new_var();
+        vector->type = S_LIST;
+        vector->val.lval = NULL;
+    }
+    new_list = append(append(append(NULL,operator),var),vector);
     var = list2var(new_list);
-    if (DEBUG) printf("qq: %s\n",print_str(var,true,true));
+    if (DEBUG) printf("qq: exit %s\n",print_str(var,true,true));
     return var;
 }
 
@@ -394,7 +401,7 @@ VAR* eval(VAR* ast,ENV* env)
                  return (elt->next?elt->next->var:&var_nil);
             }
             else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
-                ast = handle_quasiquote(elt->next);
+                ast = (elt->next?handle_quasiquote(elt->next->var):&var_nil);
             }
             else {
                 eval_list = eval_ast(ast,env);

@@ -35,3 +35,8 @@ the situation where a comment was the final line of a program file and
 did not have trailing newline.  In the end I amended the definition of
 load-file to place an extra newline after the slurp to protect the
 closing parenthesis of the do form.
+
+6. Step 7 (quoting) took me an age.  It wasn't until I wrote
+supporting functions for access to list elements (first and second)
+and realised that handle_quasiquote should take a VAR as the argument,
+not a list element, that I got my head around it.
