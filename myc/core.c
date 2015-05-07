@@ -505,6 +505,65 @@ VAR* b_concat(LIST* list)
     return var;
 }
 
+VAR* b_first(LIST *list)
+{
+    VAR* var = NULL;
+    
+    if (list) var = first(list->var);
+    return (var?var:&var_nil);
+}
+
+VAR* b_second(LIST *list)
+{
+    VAR* var = NULL;
+    
+    if (list) var = second(list->var);
+    return (var?var:&var_nil);
+}
+
+VAR* b_rest(LIST *list)
+{
+    VAR* var = NULL;
+    
+    if (list) var = rest(list->var);
+    return (var?var:&empty_list);
+}
+
+VAR* b_nth(LIST* list)
+{
+    VAR* vlist;
+    VAR* count;
+    LIST* elt = NULL;
+    int n;
+
+    vlist = list->var;
+    count = (list->next?list->next->var:&var_nil);
+    if (islist(vlist->type) && count->type == S_INT) {
+        elt = vlist->val.lval;
+        n = count->val.ival;
+        while (elt && n > 0) {
+            n--;
+            elt = elt->next;
+        }
+    }
+    if (!elt) {
+        throw(mal_error("nth index out of range"));
+    }
+    return elt->var;
+}
+
+VAR* b_throw(LIST* list)
+{
+    static char anon[] = "anonymous throw";
+    char *msg = anon;
+    
+    if (list && list->var->type == S_STR) {
+        msg = list->var->val.pval;
+    }
+    throw(mal_error(msg));
+    return &error;
+}
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -528,7 +587,12 @@ struct s_builtin core_fn[] =
     {"slurp",b_slurp},
     {"eval",b_eval},
     {"cons",b_cons},
-    {"concat",b_concat}
+    {"concat",b_concat},
+    {"first",b_first},
+    {"second",b_second},
+    {"rest",b_rest},
+    {"nth",b_nth},
+    {"throw",b_throw}
 };
 
 static ENV* repl_env = NULL;

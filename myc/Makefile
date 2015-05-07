@@ -1,5 +1,5 @@
-TARGET=step7_quote
-S_OBJS=step7_quote.o reader.o printer.o env.o core.o
+TARGET=step8_macros
+S_OBJS=step8_macros.o reader.o printer.o env.o core.o
 CFLAGS=-g -Wno-pointer-to-int-cast
 LDFLAGS=-lreadline
 

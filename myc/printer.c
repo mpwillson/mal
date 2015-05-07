@@ -73,7 +73,8 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
     *tok = '\0';
     switch (var->type) {
         case S_ROOT:
-            print_str(var->val.lval->var,print_readably,true);
+            if (var->val.lval)
+                print_str(var->val.lval->var,print_readably,true);
             return buffer;
         case S_LIST:
         case S_VECTOR:
@@ -131,6 +132,9 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             break;
         case S_BUILTIN:
             sprintf(tok,"#<builtin %x>",(unsigned int)var->val.bval);
+            break;
+        case S_MACRO:
+            sprintf(tok,"#<macro %x>",(unsigned int)var->val.bval);
             break;
         case S_EOF:
             break;

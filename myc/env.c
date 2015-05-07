@@ -53,7 +53,7 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     */
     if (binds != NULL) {
         bind_list = binds->val.lval;
-        expr_list = exprs->val.lval;
+        expr_list = (exprs?exprs->val.lval:NULL);
         if (expr_list == NULL) expr_list = &nil_elt;
         while (bind_list != NULL) {
             if (strcmp(bind_list->var->val.pval,"&") == 0) {

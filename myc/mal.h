@@ -28,6 +28,7 @@
 #define S_FN 22
 #define S_BUILTIN 23
 #define S_COMMENT 24
+#define S_MACRO 25
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
                       t == S_HASHMAP)
@@ -82,6 +83,7 @@ extern VAR var_nil;
 extern VAR var_true;
 extern VAR var_false;
 extern VAR error;
+extern VAR empty_list;
 
 /* function prototypes */
 char* mal_error(const char *fmt, ...);
@@ -96,5 +98,9 @@ VAR* list2var(LIST*);
 VAR* repl_read(char *);
 VAR* eval(VAR*,struct s_env *);
 VAR* eval_ast(VAR*,struct s_env *);
+VAR* first(VAR*);
+VAR* second(VAR*);
+VAR* rest(VAR*);
+void throw(char*);
 
 #endif
