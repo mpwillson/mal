@@ -32,7 +32,10 @@ VAR* b_count(LIST* list)
     VAR* var = new_var();
 
     var->type = S_INT;
-    var->val.ival = count(list->var->val.lval);
+    var->val.ival = 0;
+    if (list && islist(list->var->type)) {
+        var->val.ival = count(list->var->val.lval);
+    }
     return var;
 }
 

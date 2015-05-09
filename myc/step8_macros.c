@@ -439,69 +439,68 @@ VAR* eval(VAR* ast,ENV* env)
             ast = macroexpand(ast,env);
             if (ast->type != S_LIST) return ast;
             elt = ast->val.lval;
-            if (strcmp(elt->var->val.pval,"def!") == 0) {
-                return def_form(elt->next,env);
-            }
-            else if (strcmp(elt->var->val.pval,"let*") == 0) {
-                env = let_env(elt->next,env);
-                if (env == NULL) {
-                    error.val.pval = mal_error("malformed binding form");
-                    return &error;
+            if (elt->var->type == S_SYM) {
+                if (strcmp(elt->var->val.pval,"def!") == 0) {
+                    return def_form(elt->next,env);
                 }
-                if (elt->next != NULL && elt->next->next != NULL) {
-                    ast = elt->next->next->var;
-                }
-                else {
-                    return &var_nil;
-                }
-            }
-            else if (strcmp(elt->var->val.pval,"do") == 0) {
-                ast = do_form(elt->next,env);
-            }
-            else if (strcmp(elt->var->val.pval,"if") == 0) {
-                ast = if_form(elt->next,env);
-            }
-            else if (strcmp(elt->var->val.pval,"fn*") == 0) {
-                return make_fn(elt->next,env);
-            }
-            else if (strcmp(elt->var->val.pval,"quote") == 0) {
-                 return (elt->next?elt->next->var:&var_nil);
-            }
-            else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
-                ast = (elt->next?handle_quasiquote(elt->next->var):&var_nil);
-            }
-            else if (strcmp(elt->var->val.pval,"defmacro!") == 0) {
-                return defmacro_form(elt->next,env);
-            }
-            else if (strcmp(elt->var->val.pval,"macroexpand") == 0) {
-                return macroexpand(elt->next->var,env);
-            }
-            else {
-                eval_list = eval_ast(ast,env);
-                if (eval_list->type != S_ERROR) {
-                    elt = eval_list->val.lval;
-                    if (elt->var->type == S_BUILTIN) {
-                        eval_list = elt->var->val.bval(elt->next);
-                        return eval_list;
-                    }               
-                    else if (elt->var->type == S_FN) {
-                        fn = elt->var->val.fval;
-                        env = new_env(37,fn->env,
-                                      fn->args,
-                                      list2var(elt->next));
-                        ast = fn->forms;
-                    }
-                    else {
-                        error.val.pval = mal_error("'%s' not callable",
-                                               print_str(elt->var,true,true));
+                else if (strcmp(elt->var->val.pval,"let*") == 0) {
+                    env = let_env(elt->next,env);
+                    if (env == NULL) {
+                        error.val.pval = mal_error("malformed binding form");
                         return &error;
                     }
+                    if (elt->next != NULL && elt->next->next != NULL) {
+                        ast = elt->next->next->var;
+                    }
+                    else {
+                        return &var_nil;
+                    }
                 }
-                else {
-                    return eval_list;
+                else if (strcmp(elt->var->val.pval,"do") == 0) {
+                    ast = do_form(elt->next,env);
+                }
+                else if (strcmp(elt->var->val.pval,"if") == 0) {
+                    ast = if_form(elt->next,env);
+                }
+                else if (strcmp(elt->var->val.pval,"fn*") == 0) {
+                    return make_fn(elt->next,env);
+                }
+                else if (strcmp(elt->var->val.pval,"quote") == 0) {
+                    return (elt->next?elt->next->var:&var_nil);
+                }
+                else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
+                    ast = (elt->next?handle_quasiquote(elt->next->var):&var_nil);
+                }
+                else if (strcmp(elt->var->val.pval,"defmacro!") == 0) {
+                    return defmacro_form(elt->next,env);
+                }
+                else if (strcmp(elt->var->val.pval,"macroexpand") == 0) {
+                    return macroexpand(elt->next->var,env);
                 }
             }
-
+            eval_list = eval_ast(ast,env);
+            if (eval_list->type != S_ERROR) {
+                elt = eval_list->val.lval;
+                if (elt->var->type == S_BUILTIN) {
+                    eval_list = elt->var->val.bval(elt->next);
+                    return eval_list;
+                }               
+                else if (elt->var->type == S_FN) {
+                    fn = elt->var->val.fval;
+                    env = new_env(37,fn->env,
+                                  fn->args,
+                                  list2var(elt->next));
+                    ast = fn->forms;
+                }
+                else {
+                    error.val.pval = mal_error("'%s' not callable",
+                                               print_str(elt->var,true,true));
+                    return &error;
+                }
+            }
+            else {
+                return eval_list;
+            }
         }
         else {
             return eval_ast(ast,env);
@@ -564,6 +563,10 @@ int main(int argc, char* argv[])
         "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) "
         "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME "
         "(or ~@(rest xs))))))))",env);
+    rep("(defmacro! and (fn* (& xs) "
+        "(if (empty? xs) true (if (= 1 (count xs)) (first xs) "
+        "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME "
+        "(and ~@(rest xs))))))))",env);
     rep("(defmacro! cond (fn* (& xs) "
         "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) "
         "(nth xs 1) (throw \"odd number of forms to cond\")) "

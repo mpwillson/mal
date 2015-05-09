@@ -1,0 +1,10 @@
+(defmacro! -> (fn* [x & xs]
+     (if (empty? xs)
+         x
+       (let* (x_ (first xs) nelt_ (count x_))
+         (if (= nelt_ 0) 
+             `(-> (~x_ ~x) ~@(rest xs))
+           (if (= nelt_ 1)
+               `(-> (~(first x_) ~x) ~@(rest xs))  `(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))
+
+

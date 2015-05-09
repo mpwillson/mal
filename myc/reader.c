@@ -174,6 +174,7 @@ int lexer(void)
 		ungetlexchar(ch);
 		lexsym = S_UNDEF;
 	}
+    printf("lexer: type: %d, token: '%s'\n",lexsym,lextok);
      return lexsym;
 }
 
