@@ -5,6 +5,7 @@
          (if (= nelt_ 0) 
              `(-> (~x_ ~x) ~@(rest xs))
            (if (= nelt_ 1)
-               `(-> (~(first x_) ~x) ~@(rest xs))  `(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))
+               `(-> ((first ~x_) ~x) ~@(rest xs))
+             `(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))
 
 

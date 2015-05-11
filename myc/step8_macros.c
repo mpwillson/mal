@@ -19,43 +19,41 @@
 
 /* Define atoms */
 VAR quote = {
-    S_SYM,"quote"
+    S_SYM,{"quote"}
 };
 VAR quasiquote = {
-    S_SYM,"quasiquote"
+    S_SYM,{"quasiquote"}
 };
 VAR unquote = {
-    S_SYM,"unquote"
+    S_SYM,{"unquote"}
 };
 VAR splice = {
-    S_SYM,"splice-unquote"
+    S_SYM,{"splice-unquote"}
 };
 VAR deref = {
-    S_SYM,"deref"
+    S_SYM,{"deref"}
 };
 VAR meta = {
-    S_SYM,"with-meta"
+    S_SYM,{"with-meta"}
 };
 VAR var_nil = {
-    S_NIL,NULL
+    S_NIL,{NULL}
 };
 VAR var_true = {
-    S_TRUE,NULL
+    S_TRUE,{NULL}
 };
 VAR var_false = {
-    S_FALSE,NULL
+    S_FALSE,{NULL}
 };
 VAR empty_list = {
-    S_LIST,NULL
+    S_LIST,{NULL}
 };
 
 
 /* For error returns */
-VAR error = {S_ERROR,NULL};
+VAR error = {S_ERROR,{NULL}};
 
-jmp_buf jmp_env;
-
-static char errmsg[BUFSIZE];
+jmp_buf jmp_env;static char errmsg[BUFSIZE];
 
 void mal_die(char* msg)
 {
@@ -263,21 +261,38 @@ FN* is_macro_call(VAR* ast,ENV* env)
     return NULL;
 }
 
+/* Macro arguments must be quoted to prevent evaluation
+ * I think if mal macros had arguments, then this quoting would not
+ * be necessary, as the arguments would passed (unevaluated) via a
+ * new environment.
+ */
 VAR* macroexpand(VAR* ast, ENV* env)
 {
     FN* macro;
+    VAR* e_ast;
+    LIST* elt, *new_list = NULL;
 
     while ((macro = is_macro_call(ast,env))) {
-        ast->val.lval->var = macro->forms;
-        ast = eval(ast,env);
-     }
+        new_list = new_elt();
+        e_ast = new_var();
+        e_ast->type = S_LIST;
+        e_ast->val.lval = new_list;
+        new_list->var = macro->forms;
+        new_list->next = NULL;
+        elt = ast->val.lval->next;
+        while (elt) {
+            new_list = append(new_list,
+                              list2var(append(append(NULL,&quote),elt->var)));
+            elt = elt->next;
+        }
+        ast = eval(e_ast,env);
+    }
     return ast;
 }
             
 VAR* do_form(LIST* form,ENV* env)
 {
     LIST* elt, *new_list = NULL;
-    VAR* result;
     
     if (form == NULL) return &var_nil;
     if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
@@ -357,8 +372,8 @@ VAR* handle_quasiquote(VAR* ast)
 {
     LIST *elt, *new_list = NULL;
     VAR *var, *operator, *rest;
-    static VAR cons = {S_SYM,"cons"};
-    static VAR concat = {S_SYM,"concat"};
+    static VAR cons = {S_SYM,{"cons"}};
+    static VAR concat = {S_SYM,{"concat"}};
 
     if (DEBUG) printf("qq entry: %s\n",print_str(ast,true,true));
     if (!is_pair(ast)) {
@@ -430,7 +445,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
 VAR* eval(VAR* ast,ENV* env)
 {
     VAR* eval_list;
-    LIST* elt,*env_elt;
+    LIST* elt;
     FN* fn;
 
     while (true) {
@@ -451,16 +466,17 @@ VAR* eval(VAR* ast,ENV* env)
                     }
                     if (elt->next != NULL && elt->next->next != NULL) {
                         ast = elt->next->next->var;
+                        continue;
                     }
                     else {
                         return &var_nil;
                     }
                 }
                 else if (strcmp(elt->var->val.pval,"do") == 0) {
-                    ast = do_form(elt->next,env);
+                    ast = do_form(elt->next,env); continue;
                 }
                 else if (strcmp(elt->var->val.pval,"if") == 0) {
-                    ast = if_form(elt->next,env);
+                    ast = if_form(elt->next,env); continue;
                 }
                 else if (strcmp(elt->var->val.pval,"fn*") == 0) {
                     return make_fn(elt->next,env);
@@ -469,7 +485,9 @@ VAR* eval(VAR* ast,ENV* env)
                     return (elt->next?elt->next->var:&var_nil);
                 }
                 else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
-                    ast = (elt->next?handle_quasiquote(elt->next->var):&var_nil);
+                    ast = (elt->next?handle_quasiquote(elt->next->var):
+                           &var_nil);
+                    continue;
                 }
                 else if (strcmp(elt->var->val.pval,"defmacro!") == 0) {
                     return defmacro_form(elt->next,env);
@@ -479,7 +497,7 @@ VAR* eval(VAR* ast,ENV* env)
                 }
             }
             eval_list = eval_ast(ast,env);
-            if (eval_list->type != S_ERROR) {
+            if (eval_list->type == S_LIST) {
                 elt = eval_list->val.lval;
                 if (elt->var->type == S_BUILTIN) {
                     eval_list = elt->var->val.bval(elt->next);
@@ -500,7 +518,7 @@ VAR* eval(VAR* ast,ENV* env)
             }
             else {
                 return eval_list;
-            }
+            }   
         }
         else {
             return eval_ast(ast,env);
@@ -571,6 +589,14 @@ int main(int argc, char* argv[])
         "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) "
         "(nth xs 1) (throw \"odd number of forms to cond\")) "
         "(cons 'cond (rest (rest xs)))))))",env);
+    rep("(defmacro! -> (fn* [x & xs]"
+        "(if (empty? xs) x"
+        "(let* (x_ (first xs) nelt_ (count x_))"
+        "(if (= nelt_ 0) "
+        "`(-> (~x_ ~x) ~@(rest xs))"
+        "(if (= nelt_ 1)"
+        "`(-> (~(first x_) ~x) ~@(rest xs))"
+        "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env);
     
     env_put(env,"*ARGV*",list2var(NULL));
     

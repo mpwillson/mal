@@ -45,3 +45,20 @@ elements to be passed to the recursive call of handle_quasiquote, was
 that element by element and formating a list of results, or by passing
 the remaing list?  From the way that splice-unquote was detected, the
 latter seemed to be the approach.
+
+7. Step 8 (macros) was also a little tricky.  I first implemented
+macros with arguments, but the test suite showed me that mal macros
+don't have arguments.  That led to the next problem, which took me a
+while to figure out.  The macro arguments were being evaluated, so I
+had to create the macroexpansion with quoted arguments. If mal macros
+did support arguments, I don't think I would need to do this, as
+argments would be passed to the macro via a new environment and they
+would not be evaluated. It is interesting that the only tests that
+would actually fail when macro arguments were evaluated were for the
+"->" macro. And that took me a while to write, until I figured out
+the problem with argument evaluation.
+
+8. I also had to modify the reader to use a malloc'd buffer, not the
+fixed buffer size I had started with.  The macro forms were
+sufficiently long to be truncated by the fixed size approach.
+

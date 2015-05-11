@@ -34,8 +34,9 @@ char lextok[LEXTOKSIZ+1];
 
 /* END GLOBALS */
 
-static char lexbuf[LEXBUFSIZ+1];
-static int bufidx;
+char* lexbuf = NULL;
+static int bufidx = 0;
+static int lexbufsize = 0;
 
 #define getlexchar() ((lexbuf[bufidx] != '\0')?lexbuf[bufidx++]:EOF)
 #define ungetlexchar(ch) ((ch != '\0' && ch != EOF)?bufidx--:0)
@@ -43,8 +44,20 @@ static int bufidx;
 
 void init_lexer(char *s)
 {
+    int slen;
+
+    slen = strlen(s);
+    if (slen >= lexbufsize) {
+        if (lexbuf) {
+            lexbuf = (char *) realloc(lexbuf,slen+1);
+        }
+        else {
+            lexbuf = (char *) malloc(slen+1);
+        }
+    }
+    lexbufsize = slen+1;
     bufidx = 0;
-    strncpy(lexbuf,s,LEXBUFSIZ);
+    strncpy(lexbuf,s,slen+1);
 }
 
 int issymbol(char ch)
@@ -174,8 +187,7 @@ int lexer(void)
 		ungetlexchar(ch);
 		lexsym = S_UNDEF;
 	}
-    printf("lexer: type: %d, token: '%s'\n",lexsym,lextok);
-     return lexsym;
+    return lexsym;
 }
 
 char* list_open(int type)
@@ -242,9 +254,6 @@ VAR* handle_quote(int token_type)
 {
     VAR* quote_type;
     VAR* form;
-    VAR* new = new_var();
-    
-    LIST* elt;
     
     switch (token_type) {
         case S_QUOTE:
@@ -298,13 +307,13 @@ VAR* read_list(int type,char close)
         if (var->type != S_COMMENT) list = append(list,var);
         token_type = lexer();
     }
+    var = new_var();
     if (type != S_ROOT && token_type != close) {
         var->type = S_ERROR;
         var->val.pval = mal_error("terminating list character '%c' expected",
                                   close);
     }
     else {
-        var = new_var();
         var->type = type;
         var->val.lval = list;
     }
@@ -313,7 +322,6 @@ VAR* read_list(int type,char close)
 
 VAR* read_form(int token_type)
 {
-    LIST* form = NULL;
     VAR* var;
 
     var = new_var();

@@ -122,8 +122,7 @@ bool list_equalp(LIST* l1, LIST* l2)
 
 VAR* b_equalp(LIST* list)
 {
-    LIST *l1,*l2;
-    VAR* v1= NULL ,*v2 = NULL;
+    VAR* v1= NULL, *v2 = NULL;
 
     if (list == NULL) return &var_false;
     v1 = list->var;
@@ -483,6 +482,7 @@ LIST* concat(LIST* l1, LIST* l2)
     }
     elt->next = l2;
     return l1;
+    
 }
 
 VAR* b_concat(LIST* list)

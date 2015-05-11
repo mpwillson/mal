@@ -1,6 +1,6 @@
 TARGET=step8_macros
 S_OBJS=step8_macros.o reader.o printer.o env.o core.o
-CFLAGS=-g -Wno-pointer-to-int-cast
+CFLAGS=-g -Wall -Wno-pointer-to-int-cast
 LDFLAGS=-lreadline
 
 ${TARGET}: $(S_OBJS) mal.h reader.h printer.h env.h core.h
