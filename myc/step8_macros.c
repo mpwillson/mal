@@ -223,7 +223,7 @@ VAR* fn_form(LIST* list,ENV *env,int type)
 
     if (list) {
         fn->args = list->var;
-        fn->forms = cons(&do_atom,list->next);//list2var(list->next); //(list->next!=NULL?list->next->var:&var_nil);
+        fn->forms = cons(&do_atom,list->next);
         env->closure = true;
         fn->env = env;
         fn_var->type = type;
@@ -517,7 +517,7 @@ VAR* eval(VAR* ast,ENV* env)
                     env = new_env(37,fn->env,
                                   fn->args,
                                   list2var(elt->next));
-                    ast = fn->forms;  //do_form(fn->forms->val.lval,env);  //
+                    ast = fn->forms;
                 }
                 else {
                     error.val.pval = mal_error("'%s' not callable",
