@@ -44,7 +44,7 @@ typedef struct s_var VAR;
 typedef struct s_list LIST;
 typedef struct s_fn FN;
 
-/* declaration for internal functions that do stuff to two VARs */
+/* declaration for internal functions that do stuff to LIST */
 typedef VAR*(*BUILTIN)(LIST*);
 
 union u_val {
