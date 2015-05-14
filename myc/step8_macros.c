@@ -286,8 +286,6 @@ VAR* defmacro_form(LIST* list,ENV *env)
 }
 #endif
 
-VAR* do_form(LIST*,ENV*);
-
 VAR* macroexpand(VAR* ast, ENV* env)
 {
     FN* macro;
