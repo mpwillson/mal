@@ -39,10 +39,12 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
 
     /* Initialise new env instance */
     env = (ENV*) malloc(sizeof(ENV));
+    if (!env) mal_die("out of memory in new_env (env)");
     env->size = size;
     env->closure = false;
     env->outer = outer;
     env->sym = (SYM**) malloc(sizeof(SYM*)*size);
+    if (!env->sym) mal_die("out of memory in new_env (sym)");
     sym = env->sym;
     for (i=0;i<size;i++) {
         *sym++ = NULL;
