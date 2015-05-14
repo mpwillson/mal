@@ -110,31 +110,19 @@ VAR* new_var() {
     var->val.lval = NULL;
     return var;
 }
-
-VAR* list2var(LIST* list)
+      
+FN* new_fn()
 {
-    VAR* var = new_var();
+    FN* fn;
 
-    var->type = S_LIST;
-    var->val.lval = list;
-    return var;
-}
-
-LIST* append(LIST* list,VAR* var)
-{
-    LIST *elt,*current;
-
-    elt = new_elt();
-    elt->var = var;
-    if (list == NULL) {
-        return elt;
+    fn = (FN*) malloc(sizeof(FN));
+    if (fn == NULL) {
+        mal_die("out of memory at new_fn");
     }
-    else {
-        current = list;
-        while (current->next != NULL) current = current->next;
-        current->next = elt;
-    }
-    return list;
+    fn->args = NULL;
+    fn->forms = NULL;
+    fn->env = NULL;
+    return fn;
 }
 
 void free_var(VAR* var)
@@ -161,57 +149,30 @@ void free_list(LIST* list)
     }
 }
 
-FN* new_fn()
+VAR* list2var(LIST* list)
 {
-    FN* fn;
+    VAR* var = new_var();
 
-    fn = (FN*) malloc(sizeof(FN));
-    if (fn == NULL) {
-        mal_die("out of memory at new_fn");
-    }
-    fn->args = NULL;
-    fn->forms = NULL;
-    fn->env = NULL;
-    return fn;
+    var->type = S_LIST;
+    var->val.lval = list;
+    return var;
 }
 
-/* Construct function environment from LIST* list.
- * First element is the list of formal arguments.
- * Remaining elements are the body of the function
- * TDB Add error checking.
- */
-VAR* make_fn(LIST* list,ENV *env)
+LIST* append(LIST* list,VAR* var)
 {
-    FN* fn = new_fn();
-    VAR* fn_var = new_var();
- 
-    fn->args = list->var;
-    fn->forms = (list->next!=NULL?list->next->var:&var_nil);
-    env->closure = true;
-    fn->env = env;
-    fn_var->type = S_FN;
-    fn_var->val.fval = fn;
-    return fn_var;
-}
+    LIST *elt,*current;
 
-VAR* defmacro_form(LIST* list,ENV *env)
-{
-    FN* macro = new_fn();
-    VAR* macro_var = new_var();
-    VAR* name;
-
-    if (list) {
-        name = list->var;
-        if (!list->next) return &var_nil;
-        macro->forms = list->next->var; /* macros don't have args */
-        env->closure = true;
-        macro->env = env;
-        macro_var->type = S_MACRO;
-        macro_var->val.fval = macro;
-        env_put(env,name->val.pval,macro_var);
-        return macro_var;
+    elt = new_elt();
+    elt->var = var;
+    if (list == NULL) {
+        return elt;
     }
-    return &var_nil;
+    else {
+        current = list;
+        while (current->next != NULL) current = current->next;
+        current->next = elt;
+    }
+    return list;
 }
 
 bool is_pair(VAR* var)
@@ -249,6 +210,29 @@ VAR* rest(VAR* var)
 }
 
 
+/* Construct function environment from LIST* list.
+ * First element is the list of formal arguments.
+ * Remaining elements are the body of the function, wrapped in a do
+ * form.
+ */
+VAR* fn_form(LIST* list,ENV *env,int type)
+{
+    static VAR do_atom = {S_SYM,{"do"}};
+    FN* fn = new_fn();
+    VAR* fn_var = new_var();
+
+    if (list) {
+        fn->args = list->var;
+        fn->forms = cons(&do_atom,list->next);//list2var(list->next); //(list->next!=NULL?list->next->var:&var_nil);
+        env->closure = true;
+        fn->env = env;
+        fn_var->type = type;
+        fn_var->val.fval = fn;
+        return fn_var;
+    }
+    return &var_nil;
+}
+
 FN* is_macro_call(VAR* ast,ENV* env)
 {
     VAR* var;
@@ -261,35 +245,60 @@ FN* is_macro_call(VAR* ast,ENV* env)
     return NULL;
 }
 
-/* Macro arguments must be quoted to prevent evaluation
- * I think if mal macros had arguments, then this quoting would not
- * be necessary, as the arguments would passed (unevaluated) via a
- * new environment.
- */
+/* Set MAL_MACRO to 0 to provide alternate (more normal) macro
+ * definition, one that supports explicit macro arguments. Note that
+ * in-built macro definitions will not evaluate with the alternate
+ * setting. */
+#define MAL_MACRO 1
+
+#if MAL_MACRO == 1
+VAR* defmacro_form(LIST* list,ENV *env)
+{
+    VAR* macro_var = &var_nil, *macro_body;
+    VAR* name;
+
+    if (list) {
+        name = list->var;
+        if (list->next) {
+            macro_body = rest(list->next->var);
+            macro_var = fn_form(macro_body->val.lval,env,S_MACRO);
+            env_put(env,name->val.pval,macro_var);
+        }
+    }
+    return macro_var;
+}
+
+#else
+/* Macros with arguments (defmacro! m [x y] (forms)) */
+VAR* defmacro_form(LIST* list,ENV *env)
+{
+    VAR* macro_var = &var_nil;
+    VAR* name;
+
+    if (list) {
+        name = list->var;
+        if (list->next) {
+            macro_var = fn_form(list->next,env,S_MACRO);
+            env_put(env,name->val.pval,macro_var);
+        }       
+    }
+    return macro_var;
+}
+#endif
+
+VAR* do_form(LIST*,ENV*);
+
 VAR* macroexpand(VAR* ast, ENV* env)
 {
     FN* macro;
-    VAR* e_ast;
-    LIST* elt, *new_list = NULL;
 
     while ((macro = is_macro_call(ast,env))) {
-        new_list = new_elt();
-        e_ast = new_var();
-        e_ast->type = S_LIST;
-        e_ast->val.lval = new_list;
-        new_list->var = macro->forms;
-        new_list->next = NULL;
-        elt = ast->val.lval->next;
-        while (elt) {
-            new_list = append(new_list,
-                              list2var(append(append(NULL,&quote),elt->var)));
-            elt = elt->next;
-        }
-        ast = eval(e_ast,env);
-    }
+        ast = eval(macro->forms,new_env(37,macro->env,macro->args,
+                              list2var(ast->val.lval->next)));
+    }   
     return ast;
 }
-            
+      
 VAR* do_form(LIST* form,ENV* env)
 {
     LIST* elt, *new_list = NULL;
@@ -479,7 +488,7 @@ VAR* eval(VAR* ast,ENV* env)
                     ast = if_form(elt->next,env); continue;
                 }
                 else if (strcmp(elt->var->val.pval,"fn*") == 0) {
-                    return make_fn(elt->next,env);
+                    return fn_form(elt->next,env,S_FN);
                 }
                 else if (strcmp(elt->var->val.pval,"quote") == 0) {
                     return (elt->next?elt->next->var:&var_nil);
@@ -508,7 +517,7 @@ VAR* eval(VAR* ast,ENV* env)
                     env = new_env(37,fn->env,
                                   fn->args,
                                   list2var(elt->next));
-                    ast = fn->forms;
+                    ast = fn->forms;  //do_form(fn->forms->val.lval,env);  //
                 }
                 else {
                     error.val.pval = mal_error("'%s' not callable",
