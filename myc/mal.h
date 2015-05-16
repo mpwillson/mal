@@ -86,7 +86,7 @@ extern VAR error;
 extern VAR empty_list;
 
 /* function prototypes */
-char* mal_error(const char *fmt, ...);
+VAR* mal_error(const char *fmt, ...);
 void mal_die(char*);
 void free_var(VAR*);
 void free_list(LIST*);
@@ -101,6 +101,6 @@ VAR* eval_ast(VAR*,struct s_env *);
 VAR* first(VAR*);
 VAR* second(VAR*);
 VAR* rest(VAR*);
-void throw(char*);
+void throw(VAR*);
 
 #endif

@@ -309,9 +309,8 @@ VAR* read_list(int type,char close)
     }
     var = new_var();
     if (type != S_ROOT && token_type != close) {
-        var->type = S_ERROR;
-        var->val.pval = mal_error("terminating list character '%c' expected",
-                                  close);
+        /* var->type = S_ERROR; */
+        throw(mal_error("terminating list character '%c' expected",close));
     }
     else {
         var->type = type;
@@ -347,7 +346,7 @@ VAR* read_form(int token_type)
             break;
         case S_USTR:
             var->type = S_ERROR;
-            var->val.pval = mal_error("unterminated string");
+            throw(mal_error("unterminated string"));
             break;
         case S_COMMENT:
             //var = read_form(lexer());

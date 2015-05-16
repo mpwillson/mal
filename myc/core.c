@@ -370,24 +370,24 @@ VAR* b_slurp(LIST* list)
         fn = list->var->val.pval;
         in = fopen(fn,"r");
         if (in == NULL) {
-            error.val.pval = mal_error("unable to open file: '%s'",fn);
+            throw(mal_error("unable to open file: '%s'",fn));
             return &error;
         }
         if (fstat(fileno(in),&statbuf) != 0) {
-            error.val.pval = mal_error("fstat failed for file '%s'",fn);
+            throw(mal_error("fstat failed for file '%s'",fn));
             fclose(in);
             return &error;
         }
         /* is this a regular file? */
         if (!S_ISREG(statbuf.st_mode)) {
-            error.val.pval = mal_error("file '%s' is not a regular file",fn);
+            throw(mal_error("file '%s' is not a regular file",fn));
             fclose(in);
             return &error;
         }
         /* acquire memory to hold file contents */
         slurp_buf = (char *) malloc(statbuf.st_size+1);
         if (slurp_buf == NULL) {
-            error.val.pval = mal_error("no memory for slurp buffer");
+            throw(mal_error("no memory for slurp buffer"));
             fclose(in);
             return &error;
         }
@@ -400,7 +400,7 @@ VAR* b_slurp(LIST* list)
             memcpy(slurp_buf+offset,buf,nitems);
             offset += nitems;
             if (offset > statbuf.st_size) {
-                error.val.pval = mal_error("internal error - buffer overflow");
+                throw(mal_error("internal error - buffer overflow"));
                 free(slurp_buf);
                 fclose(in);
                 return &error;
@@ -448,7 +448,7 @@ VAR* b_cons(LIST* list)
         return cons(var,NULL);
     }
     else {
-        error.val.pval = mal_error("cons target not a list");
+        throw(mal_error("cons target not a list"));
         return &error;
     }
 }
@@ -557,13 +557,7 @@ VAR* b_nth(LIST* list)
 
 VAR* b_throw(LIST* list)
 {
-    static char anon[] = "anonymous throw";
-    char *msg = anon;
-    
-    if (list && list->var->type == S_STR) {
-        msg = list->var->val.pval;
-    }
-    throw(mal_error(msg));
+    throw((list?list->var:&var_nil));
     return &error;
 }
 
