@@ -1,4 +1,4 @@
-TARGET=step8_macros
+TARGET=step9_try
 S_OBJS=${TARGET}.o reader.o printer.o env.o core.o
 CFLAGS=-g -Wall -Wno-pointer-to-int-cast
 LDFLAGS=-lreadline
