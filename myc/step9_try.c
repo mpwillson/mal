@@ -236,7 +236,7 @@ VAR* rest(VAR* var)
 
 VAR* try_catch_form(LIST* list, ENV* env)
 {
-    VAR *try_form, *catch_form, *catch_var, *v, *ast;
+    VAR *try_form, *catch_form, *catch_var, *v, *ast = &var_nil;
     jmp_buf jmp_env_save;
 
     try_form = cons(&do_var,(but_last(list))->val.lval);
@@ -250,14 +250,20 @@ VAR* try_catch_form(LIST* list, ENV* env)
             ast = eval(try_form,env);
         }
         else {
-            ast = eval(catch_form,new_env(37,env,catch_var,
+            if (setjmp(jmp_env) == 0) {
+                ast = eval(catch_form,new_env(37,env,catch_var,
                                           cons(thrown_var,NULL)));
+            }
+            else {
+                memcpy(jmp_env,jmp_env_save,sizeof(jmp_env));
+                throw(mal_error("catch* form: %s",
+                                print_str(thrown_var,true,true)));
+            }
         }
         memcpy(jmp_env,jmp_env_save,sizeof(jmp_env));
     }
     else {
         throw(mal_error("try with no catch"));
-        return &error;
     }
     return ast;
 }
@@ -351,7 +357,6 @@ VAR* macroexpand(VAR* ast, ENV* env)
 VAR* do_form(LIST* form,ENV* env)
 {
     VAR* var;
-    /* LIST* new_list = NULL; */
     
     if (form == NULL) return &var_nil;
     if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
@@ -480,13 +485,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
         elt = ast->val.lval;
         while (elt != NULL) {
             evaled_var = eval(elt->var,env);
-            if (evaled_var->type == S_ERROR) {
-                throw(mal_error(evaled_var->val.pval));
-                return evaled_var;
-            }
-            else {
-                list = append(list,evaled_var);
-            }
+            list = append(list,evaled_var);
             elt = elt->next;
         }
         list_var->type = ast->type;
