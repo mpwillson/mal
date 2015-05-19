@@ -101,6 +101,8 @@ VAR* eval_ast(VAR*,struct s_env *);
 VAR* first(VAR*);
 VAR* second(VAR*);
 VAR* rest(VAR*);
+VAR* but_last(LIST*);
+VAR* last(LIST*);
 void throw(VAR*);
 
 #endif

@@ -561,6 +561,65 @@ VAR* b_throw(LIST* list)
     return &error;
 }
 
+VAR* b_apply(LIST* list)
+{
+    VAR* apply_list, *apply_args;
+    LIST* elt = new_elt();
+    
+    if (!list) return &var_nil;
+    apply_args = but_last(list);
+    apply_list = last(list);
+    if (!islist(apply_list->type)) {
+        throw(mal_error("apply form must specify list"));
+    }
+    else {
+        elt->var = list2var(concat(apply_args->val.lval,apply_list->val.lval));
+        return b_eval(elt);
+    }
+    return &var_nil;
+}
+
+VAR* b_map(LIST* list)
+{
+    VAR* map_fn;
+    LIST* new_list = NULL, *mapped_list = NULL,
+        *elt, *eval_elt = new_elt();
+
+    if (!list) return &empty_list;
+    map_fn = list->var;
+    elt = list->next;
+    if (elt && islist(elt->var->type)) {
+        elt = elt->var->val.lval;
+        while (elt) {
+            new_list = append(append(NULL,map_fn),elt->var);
+            eval_elt->var = list2var(new_list);
+            mapped_list = append(mapped_list,b_eval(eval_elt));
+            elt = elt->next;
+        }
+    }
+    return list2var(mapped_list);
+}
+
+VAR* b_nil(LIST* list)
+{
+    return (list&&list->var->type == S_NIL?&var_true:&var_false);
+}
+
+VAR* b_true(LIST* list)
+{
+    return (list&&list->var->type == S_TRUE?&var_true:&var_false);
+}
+
+VAR* b_false(LIST* list)
+{
+    return (list&&list->var->type == S_FALSE?&var_true:&var_false);
+}
+
+VAR* b_symbol(LIST* list)
+{
+    return (list&&list->var->type == S_SYM?&var_true:&var_false);
+}
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -589,7 +648,13 @@ struct s_builtin core_fn[] =
     {"second",b_second},
     {"rest",b_rest},
     {"nth",b_nth},
-    {"throw",b_throw}
+    {"throw",b_throw},
+    {"apply",b_apply},
+    {"map",b_map},
+    {"nil?",b_nil},
+    {"true?",b_true},
+    {"false?",b_false},
+    {"symbol?",b_symbol}
 };
 
 static ENV* repl_env = NULL;
