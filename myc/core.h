@@ -1,7 +1,8 @@
 #ifndef CORE_H
 #define CORE_H
 
-ENV* ns_get(void);
+HASH* ns_get(void);
 VAR* cons(VAR*, LIST*);
+int count(LIST*);
 
 #endif

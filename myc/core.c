@@ -33,8 +33,13 @@ VAR* b_count(LIST* list)
 
     var->type = S_INT;
     var->val.ival = 0;
-    if (list && islist(list->var->type)) {
-        var->val.ival = count(list->var->val.lval);
+    if (list) {
+        if (list->var->type == S_VECTOR) {
+            var->val.ival = list->var->val.vval->size;
+        }
+        else if (islist(list->var->type)) {
+            var->val.ival = count(list->var->val.lval);
+        }
     }
     return var;
 }
@@ -51,7 +56,10 @@ VAR* b_listp(LIST* list)
 
 VAR* b_emptyp(LIST* list)
 {
-    if (islist(list->var->type) && list->var->val.lval == NULL) {
+    if (list->var->type == S_VECTOR) {
+        return (list->var->val.vval->size==0?&var_true:&var_false);
+    }
+    else if (islist(list->var->type) && list->var->val.lval == NULL) {
         return &var_true;
     }
     else {
@@ -61,12 +69,13 @@ VAR* b_emptyp(LIST* list)
 
 /* forward declaration */
 bool list_equalp(LIST*,LIST*);
+bool vec_equalp(VEC*,VEC*);
 
 VAR* var_equalp(VAR* v1, VAR* v2)
 {
     bool eq;
 
-    /* all lists types are equal in mal? */
+    /* all list types are equal in mal */
     if (!(islist(v1->type) && islist(v2->type)) &&
          v1->type != v2->type) return &var_false;
     switch (v1->type) {
@@ -87,11 +96,18 @@ VAR* var_equalp(VAR* v1, VAR* v2)
         case S_BUILTIN:
             eq = (v1->val.bval == v2->val.bval);
             break;
+        case S_VECTOR:
+            if (v2->type == S_VECTOR) {
+                eq = vec_equalp(v1->val.vval,v2->val.vval);
+            }
+            else {
+                eq = list_equalp(seq(v1)->val.lval,v2->val.lval);
+            }
+            break;
         case S_LIST:
         case S_HASHMAP:
-        case S_VECTOR:
         case S_ROOT:
-            eq = list_equalp(v1->val.lval,v2->val.lval);
+            eq = list_equalp(v1->val.lval,seq(v2)->val.lval);
             break;
         case S_NIL:
         case S_FALSE:
@@ -118,6 +134,17 @@ bool list_equalp(LIST* l1, LIST* l2)
         e2 = e2->next;
     }
     return (e1 == NULL && e2 == NULL);
+}
+
+bool vec_equalp(VEC* v1,VEC* v2)
+{
+    int i;
+    
+    if (v1->size != v2->size) return false;
+    for (i=0;i<v1->size;i++) {
+        if (!var_equalp(v1->vector[i],v2->vector[i])) return false;
+    }
+    return true;
 }
 
 VAR* b_equalp(LIST* list)
@@ -441,16 +468,14 @@ VAR* b_cons(LIST* list)
     if (list ==  NULL) return &var_nil;
     var = list->var;
     elt = list->next;
-    if (elt && (elt->var->type == S_LIST || elt->var->type == S_VECTOR)) {
-        return cons(var,elt->var->val.lval);
+    if (elt && islist(elt->var->type)) {
+            return cons(var,seq(elt->var)->val.lval);
     }
     else if (!elt) {
         return cons(var,NULL);
     }
-    else {
-        throw(mal_error("cons target not a list"));
-        return &error;
-    }
+    throw(mal_error("cons target not a list"));
+    return &error;
 }
 
 /* Return new list, created from argument.  Vars that point to data
@@ -495,10 +520,10 @@ VAR* b_concat(LIST* list)
     while (elt) {
         if (islist(elt->var->type)) {
             if (new) {
-                new = concat(new,copy_list(elt->var->val.lval));
+                new = concat(new,copy_list(seq(elt->var)->val.lval));
             }
             else {
-                new = copy_list(elt->var->val.lval);
+                new = copy_list(seq(elt->var)->val.lval);
             }
         }
         elt = elt->next;
@@ -542,11 +567,17 @@ VAR* b_nth(LIST* list)
     vlist = list->var;
     count = (list->next?list->next->var:&var_nil);
     if (islist(vlist->type) && count->type == S_INT) {
-        elt = vlist->val.lval;
-        n = count->val.ival;
-        while (elt && n > 0) {
-            n--;
-            elt = elt->next;
+        if (vlist->type == S_VECTOR &&
+            count->val.ival < vlist->val.vval->size ) {
+            return vlist->val.vval->vector[count->val.ival];
+        }
+        else if (vlist->type != S_VECTOR) {
+            elt = vlist->val.lval;
+            n = count->val.ival;
+            while (elt && n > 0) {
+                n--;
+                elt = elt->next;
+            }
         }
     }
     if (!elt) {
@@ -573,7 +604,7 @@ VAR* b_apply(LIST* list)
         throw(mal_error("apply form must specify list"));
     }
     else {
-        elt->var = list2var(concat(apply_args->val.lval,apply_list->val.lval));
+        elt->var = list2var(concat(apply_args->val.lval,seq(apply_list)->val.lval));
         return b_eval(elt);
     }
     return &var_nil;
@@ -589,7 +620,7 @@ VAR* b_map(LIST* list)
     map_fn = list->var;
     elt = list->next;
     if (elt && islist(elt->var->type)) {
-        elt = elt->var->val.lval;
+        elt = seq(elt->var)->val.lval;
         while (elt) {
             new_list = append(append(NULL,map_fn),elt->var);
             eval_elt->var = list2var(new_list);
@@ -615,9 +646,149 @@ VAR* b_false(LIST* list)
     return (list&&list->var->type == S_FALSE?&var_true:&var_false);
 }
 
-VAR* b_symbol(LIST* list)
+VAR* b_is_symbol(LIST* list)
 {
     return (list&&list->var->type == S_SYM?&var_true:&var_false);
+}
+
+VAR* b_symbol(LIST* list)
+{
+    VAR* var = &var_nil;
+    
+    if (list && list->var->type == S_STR) {
+        var = new_var();
+        var->type = S_SYM;
+        var->val.pval = strsave(list->var->val.pval);
+    }
+    return var;
+}
+
+VAR* b_is_keyword(LIST* list)
+{
+    return (list&&list->var->type == S_KEYWORD?&var_true:&var_false);
+}
+
+VAR* b_keyword(LIST* list)
+{
+    VAR* var = &var_nil;
+    
+    if (list) {
+        if (list->var->type == S_STR) {
+            var = new_var();
+            var->type = S_KEYWORD;
+            var->val.pval = strsave(list->var->val.pval);
+        }
+        else if (list->var->type == S_KEYWORD) {
+            var = list->var;
+        }
+    }
+    return var;
+}
+
+VAR* b_is_vector(LIST* list)
+{
+    return (list&&list->var->type == S_VECTOR?&var_true:&var_false);
+}
+
+VAR* b_vector(LIST* list)
+{
+    VAR* var = new_var();
+
+    var->type = S_VECTOR;
+    var->val.vval = mkvector(list);
+    return var;
+}
+
+VAR* b_print_env(LIST* list)
+{
+    env_dump(ns_get());
+    return &var_nil;
+}
+
+VAR* b_hash_map(LIST* list)
+{
+    VAR* var = new_var();
+
+    var->type = S_HASHMAP;
+    var->val.hval = mkhashmap(list);
+    return var;
+}
+
+VAR* b_is_hash_map(LIST* list)
+{
+    return (list&&list->var->type == S_HASHMAP?&var_true:&var_false);
+}
+
+VAR* b_get(LIST* list)
+{
+    VAR* var;
+
+    if (list && list->var->type == S_HASHMAP && list->next &&
+        (list->next->var->type == S_STR||list->next->var->type == S_KEYWORD)) {
+        var = env_get(list->var->val.hval,
+                      print_str(list->next->var,false,true));
+        return (var?var:&var_nil);
+    }
+return &var_nil;
+}
+
+VAR* b_assoc(LIST* list)
+{
+    LIST* elt;
+    VAR* var = &var_nil;
+    HASH* hash, *new_hash;
+    ITER* iter;
+    SYM* sp;
+    int size;
+
+    if (list && list->var->type == S_HASHMAP) {
+        hash = list->var->val.hval;
+        elt = list->next;
+        size = count(elt);
+        if (size%2 != 0) throw(mal_error("assoc has odd number of forms"));
+        new_hash = new_env(37,NULL,NULL,NULL);
+        iter = env_iter_init(hash);
+        while ((sp=env_next(iter)) != NULL) {
+            env_put(new_hash,sp->name,sp->value);
+        }
+        while (elt) {
+            env_put(new_hash,print_str(elt->var,false,true),elt->next->var);
+            elt = elt->next->next;
+        }
+        var = new_var();
+        var->type = S_HASHMAP;
+        var->val.hval = new_hash;
+        free(iter);
+    }
+    return var;
+}
+
+VAR* b_dissoc(LIST* list)
+{
+    LIST* elt;
+    VAR* var = &var_nil;
+    HASH* hash, *new_hash;
+    ITER* iter;
+    SYM* sp;
+
+    if (list && list->var->type == S_HASHMAP) {
+        hash = list->var->val.hval;
+        elt = list->next;
+        new_hash = new_env(37,NULL,NULL,NULL);
+        iter = env_iter_init(hash);
+        while ((sp=env_next(iter)) != NULL) {
+            env_put(new_hash,sp->name,sp->value);
+        }
+        while (elt) {
+            env_del(new_hash,print_str(elt->var,false,true));
+            elt = elt->next;
+        }
+        var = new_var();
+        var->type = S_HASHMAP;
+        var->val.hval = new_hash;
+        free(iter);
+    }
+    return var;
 }
 
 struct s_builtin core_fn[] =
@@ -654,15 +825,26 @@ struct s_builtin core_fn[] =
     {"nil?",b_nil},
     {"true?",b_true},
     {"false?",b_false},
-    {"symbol?",b_symbol}
+    {"symbol?",b_is_symbol},
+    {"symbol",b_symbol},
+    {"keyword?",b_is_keyword},
+    {"keyword",b_keyword},
+    {"vector?",b_is_vector},
+    {"vector",b_vector},
+    {"print-env",b_print_env},
+    {"hash-map",b_hash_map},
+    {"map?",b_is_hash_map},
+    {"assoc",b_assoc},
+    {"dissoc",b_dissoc},
+    {"get",b_get}
 };
 
-static ENV* repl_env = NULL;
+static HASH* repl_env = NULL;
 
 /* Insert inbuilt functions into ns namespace and return pointer */
-ENV* ns_get(void)
+HASH* ns_get(void)
 {
-    ENV* env = new_env(101,NULL,NULL,NULL);
+    HASH* env = new_env(101,NULL,NULL,NULL);
     VAR* var;
     int i;
 

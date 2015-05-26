@@ -312,10 +312,16 @@ VAR* read_list(int type,char close)
         /* var->type = S_ERROR; */
         throw(mal_error("terminating list character '%c' expected",close));
     }
+    else if (type == S_VECTOR) {
+        var->val.vval = mkvector(list);
+    }
+    else if (type == S_HASHMAP) {
+        var->val.hval = mkhashmap(list);
+    }
     else {
-        var->type = type;
         var->val.lval = list;
     }
+    var->type = type;
     return var;
 }
 

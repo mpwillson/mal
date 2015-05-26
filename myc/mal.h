@@ -38,11 +38,12 @@
 struct s_list;
 struct s_var;
 struct s_fn;
-struct s_env;
+struct s_hash;
 
 typedef struct s_var VAR;
 typedef struct s_list LIST;
 typedef struct s_fn FN;
+typedef struct s_vec VEC;
 
 /* declaration for internal functions that do stuff to LIST */
 typedef VAR*(*BUILTIN)(LIST*);
@@ -54,6 +55,9 @@ union u_val {
     FN* fval;
     LIST* lval;
     BUILTIN bval;
+    VEC* vval;
+    struct s_hash* hval;
+    
 };
 
 struct s_var {
@@ -69,9 +73,15 @@ struct s_list {
 struct s_fn {
     VAR* args;
     VAR* forms;
-    struct s_env *env;
+    struct s_hash *env;
 };
 
+struct s_vec {
+    int size;
+    VAR** vector;
+};
+
+    
 /* Declarations for pre-defined atoms */
 extern VAR quote;
 extern VAR quasiquote;
@@ -96,13 +106,16 @@ LIST* append(LIST*,VAR*);
 char* strsave(char*);
 VAR* list2var(LIST*);
 VAR* repl_read(char *);
-VAR* eval(VAR*,struct s_env *);
-VAR* eval_ast(VAR*,struct s_env *);
+VAR* eval(VAR*,struct s_hash *);
+VAR* eval_ast(VAR*,struct s_hash *);
 VAR* first(VAR*);
 VAR* second(VAR*);
 VAR* rest(VAR*);
 VAR* but_last(LIST*);
 VAR* last(LIST*);
 void throw(VAR*);
+VEC* mkvector(LIST*);
+VAR* seq(VAR*);
+struct s_hash* mkhashmap(LIST*);
 
 #endif

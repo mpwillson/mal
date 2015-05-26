@@ -128,6 +128,90 @@ FN* new_fn()
     return fn;
 }
 
+VEC* new_vec()
+{
+    VEC* vec;
+
+    vec = (VEC*) malloc(sizeof(VEC));
+    if (vec == NULL) {
+        mal_die("out of memory at new_vec");
+    }
+    vec->size = 0;
+    vec->vector = NULL;
+    return vec;
+}
+
+VEC* mkvector(LIST* list)
+{
+    VEC* vec = new_vec();
+    VAR** v;
+    LIST* elt;
+    int size;
+
+    size = count(list);
+    vec->size = size;
+    vec->vector = (VAR**) malloc(sizeof(VEC*)*size);
+    elt = list;
+    v = vec->vector;
+    while (elt) {
+        *v++ = elt->var;
+        elt = elt->next;
+    }
+    return vec;
+}
+
+HASH* mkhashmap(LIST* list)
+{
+    HASH* hash = new_env(37,NULL,NULL,NULL);
+    LIST* elt;
+    int size;
+
+    size = count(list);
+    if (size%2 == 1) throw(mal_error("odd number of forms for hashmap"));
+    elt = list;
+    while (elt) {
+        env_put(hash,print_str(elt->var,false,true),elt->next->var);
+        elt = elt->next->next;
+    }
+    return hash;
+}
+
+/* Return list-like object (vector, hash) as a list (sequence) */
+VAR* seq(VAR* var)
+{
+    LIST* list = NULL;
+    VEC* vec;
+    VAR* seq_var;
+    HASH* hash;
+    ITER* iter;
+    SYM* sp;
+    int i;
+
+    if (var->type == S_VECTOR) {
+        vec = var->val.vval;
+        for (i=0;i<vec->size;i++) {
+            list = append(list,vec->vector[i]);
+        }
+        return list2var(list);
+    }
+    else if (var->type == S_HASHMAP) {
+        hash = var->val.hval;
+        iter = env_iter_init(hash);
+        while ((sp = env_next(iter)) != NULL) {
+            seq_var = new_var();
+            seq_var->type = (sp->name[0] == ':'?S_KEYWORD:S_STR);
+            seq_var->val.pval = strsave(sp->name);
+            list = append(append(list,var),sp->value);
+        }
+        free(iter);
+        return list2var(list);
+    }
+    else if (islist(var->type)) {
+        return var;
+    }
+    return &var_nil;
+}
+
 void free_var(VAR* var)
 {
     if (isstr(var->type)) {
@@ -205,20 +289,36 @@ LIST* append(LIST* list,VAR* var)
 
 bool is_pair(VAR* var)
 {
-    return (islist(var->type) && var->val.lval);
+    if (var->type == S_VECTOR )
+        return var->val.vval->size>0;
+    else {
+        return (islist(var->type) && var->val.lval);
+    }
 }
 
 VAR* first(VAR* var)
 {
-    if (is_pair(var))
-        return var->val.lval->var;
+    if (is_pair(var)) {
+        if (var->type == S_VECTOR) {
+            return var->val.vval->vector[0];
+        }
+        else {
+            return var->val.lval->var;
+        }
+    }
     return NULL;
 }
 
 VAR* second(VAR* var)
 {
-    if (is_pair(var) && var->val.lval->next)
-        return var->val.lval->next->var;
+    if (is_pair(var)) {
+        if (var->type == S_VECTOR) {
+            return (var->val.vval->size>1?var->val.vval->vector[0]:&var_nil);
+        }
+        else if (var->val.lval->next) {            
+            return var->val.lval->next->var;
+        }
+    }
     return NULL;
 }
 
@@ -226,15 +326,18 @@ VAR* rest(VAR* var)
 {
     VAR* rest_var = NULL;
 
-    if (is_pair(var) && var->val.lval->next) {
-        rest_var = new_var();
-        rest_var->type = S_LIST;
-        rest_var->val.lval = var->val.lval->next;
+    if (is_pair(var)) {
+        var = seq(var);
+        if (var->val.lval->next) {
+            rest_var = new_var();   	
+            rest_var->type = S_LIST;
+            rest_var->val.lval = var->val.lval->next;
+        }
     }
     return rest_var;
 }
 
-VAR* try_catch_form(LIST* list, ENV* env)
+VAR* try_catch_form(LIST* list, HASH* env)
 {
     VAR *try_form, *catch_form, *catch_var, *v, *ast = &var_nil;
     jmp_buf jmp_env_save;
@@ -273,7 +376,7 @@ VAR* try_catch_form(LIST* list, ENV* env)
  * Remaining elements are the body of the function, wrapped in a do
  * form.
  */
-VAR* fn_form(LIST* list,ENV *env,int type)
+VAR* fn_form(LIST* list,HASH *env,int type)
 {
     FN* fn = new_fn();
     VAR* fn_var = new_var();
@@ -290,7 +393,7 @@ VAR* fn_form(LIST* list,ENV *env,int type)
     return &var_nil;
 }
 
-FN* is_macro_call(VAR* ast,ENV* env)
+FN* is_macro_call(VAR* ast,HASH* env)
 {
     VAR* var;
     
@@ -309,7 +412,7 @@ FN* is_macro_call(VAR* ast,ENV* env)
 #define MAL_MACRO 1
 
 #if MAL_MACRO == 1
-VAR* defmacro_form(LIST* list,ENV *env)
+VAR* defmacro_form(LIST* list,HASH *env)
 {
     VAR* macro_var = &var_nil, *macro_body;
     VAR* name;
@@ -327,7 +430,7 @@ VAR* defmacro_form(LIST* list,ENV *env)
 
 #else
 /* Macros with arguments (defmacro! m [x y] (forms)) */
-VAR* defmacro_form(LIST* list,ENV *env)
+VAR* defmacro_form(LIST* list,HASH *env)
 {
     VAR* macro_var = &var_nil;
     VAR* name;
@@ -343,7 +446,7 @@ VAR* defmacro_form(LIST* list,ENV *env)
 }
 #endif
 
-VAR* macroexpand(VAR* ast, ENV* env)
+VAR* macroexpand(VAR* ast, HASH* env)
 {
     FN* macro;
 
@@ -354,7 +457,7 @@ VAR* macroexpand(VAR* ast, ENV* env)
     return ast;
 }
       
-VAR* do_form(LIST* form,ENV* env)
+VAR* do_form(LIST* form,HASH* env)
 {
     VAR* var;
     
@@ -366,7 +469,7 @@ VAR* do_form(LIST* form,ENV* env)
     return var;
 }
 
-VAR* def_form(LIST* elt,ENV* env)
+VAR* def_form(LIST* elt,HASH* env)
 {
     VAR* evaled;
 
@@ -376,16 +479,16 @@ VAR* def_form(LIST* elt,ENV* env)
     return evaled;
 }
 
-ENV* let_env(LIST* elt,ENV *env)
+HASH* let_env(LIST* elt,HASH *env)
 {
-    ENV* new;
+    HASH* new;
     VAR* eval_list = &var_nil;
     LIST* env_elt;
 
     if (elt == NULL) return NULL;
     new = new_env(101,env,NULL,NULL);
     if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
-        env_elt = elt->var->val.lval;
+        env_elt = seq(elt->var)->val.lval;
         while (env_elt != NULL) {
             if (env_elt->next == NULL) {
                 free(env);
@@ -399,7 +502,7 @@ ENV* let_env(LIST* elt,ENV *env)
     return new;
 }
 
-VAR* if_form(LIST* elt, ENV* env)
+VAR* if_form(LIST* elt, HASH* env)
 {
     VAR* eval_list;
     
@@ -448,7 +551,7 @@ VAR* handle_quasiquote(VAR* ast)
         var = handle_quasiquote(first(ast));
         operator = &cons;
     }
-    elt = ast->val.lval->next; /* remainder of ast */
+    elt = seq(ast)->val.lval->next; /* remainder of ast */
     if (DEBUG && elt) printf("qq: recursive arg: %s\n",
                              print_str(list2var(elt),true,true));
     if (elt) {
@@ -464,12 +567,17 @@ VAR* handle_quasiquote(VAR* ast)
     return var;
 }
 
-VAR* eval_ast(VAR* ast, ENV* env)
+VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
     VAR* list_var = new_var();
     LIST* list = NULL;
     LIST* elt;
+    VEC* vec;
+    HASH* hash;
+    ITER* iter;
+    SYM* sp;
+    int i;
 
     if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
     if (ast->type == S_SYM) {
@@ -480,6 +588,22 @@ VAR* eval_ast(VAR* ast, ENV* env)
             return &error;
         }
         return var;
+    }
+    else if (ast->type == S_VECTOR) {
+        vec = ast->val.vval;
+        for (i=0;i<vec->size;i++) {
+            vec->vector[i] = eval(vec->vector[i],env);
+        }
+        return ast;
+    }
+    else if (ast->type == S_HASHMAP) {
+        hash = ast->val.hval;
+        iter = env_iter_init(hash);
+        while ((sp = env_next(iter)) != NULL) {
+            sp->value = eval(sp->value,env);
+        }
+        free(iter);
+        return ast;
     }
     else if (islist(ast->type)) { 
         elt = ast->val.lval;
@@ -495,7 +619,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
     return ast;
 }
     
-VAR* eval(VAR* ast,ENV* env)
+VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt;
@@ -596,7 +720,7 @@ char* print(VAR* var)
     return print_str(var,true,true);
 }
      
-char* rep(char* s,ENV* env)
+char* rep(char* s,HASH* env)
 {
     char* output;
 
@@ -604,7 +728,7 @@ char* rep(char* s,ENV* env)
     return output;
 }
 
-int execute_program(char* filename,int nargs,char* argv[],ENV* env)
+int execute_program(char* filename,int nargs,char* argv[],HASH* env)
 {
     char cmd[BUFSIZE+1];
     LIST* list = NULL;
@@ -632,7 +756,7 @@ int main(int argc, char* argv[])
 {
     char* bufread;
     bool at_eof = false;
-    ENV* env = ns_get();
+    HASH* env = ns_get();
 
     /* define mal functions and macros */
     rep("(def! not (fn* [x] (if x false true)))",env);
