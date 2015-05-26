@@ -139,7 +139,7 @@ FN* new_fn()
  * as a do form.
  * TDB Add error checking.
  */
-VAR* make_fn(LIST* list,ENV *env)
+VAR* make_fn(LIST* list,HASH *env)
 {
     FN* fn = new_fn();
     VAR* fn_var = new_var();
@@ -154,10 +154,10 @@ VAR* make_fn(LIST* list,ENV *env)
 }
 
 /* forward declare of eval */
-VAR* eval(VAR*,ENV*);
-VAR* eval_ast(VAR*,ENV*);
+VAR* eval(VAR*,HASH*);
+VAR* eval_ast(VAR*,HASH*);
 
-VAR* do_form(LIST* form,ENV* env)
+VAR* do_form(LIST* form,HASH* env)
 {
     VAR* result;
     LIST* elt;
@@ -174,7 +174,7 @@ VAR* do_form(LIST* form,ENV* env)
 VAR* execute_fn(VAR* fn, LIST* args)
 {
     VAR* exprs = new_var();
-    ENV* env;
+    HASH* env;
     VAR* evaled_list;
 
     exprs->type = S_LIST;
@@ -190,7 +190,7 @@ VAR* execute_fn(VAR* fn, LIST* args)
 
 /* TDB: Fix memory leaks */
 
-VAR* eval_ast(VAR* ast, ENV* env)
+VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
     VAR* list_var = new_var();
@@ -226,7 +226,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
     return ast;
 }
 
-VAR* def_form(LIST* elt,ENV* env)
+VAR* def_form(LIST* elt,HASH* env)
 {
     VAR* evaled;
 
@@ -236,9 +236,9 @@ VAR* def_form(LIST* elt,ENV* env)
     return evaled;
 }
 
-VAR* let_form(LIST* elt,ENV* env)
+VAR* let_form(LIST* elt,HASH* env)
 {
-    ENV* new;
+    HASH* new;
     VAR* eval_list;
     LIST* env_elt;
                 
@@ -269,7 +269,7 @@ VAR* let_form(LIST* elt,ENV* env)
     return eval_list;
 }
 
-VAR* if_form(LIST* elt, ENV* env)
+VAR* if_form(LIST* elt, HASH* env)
 {
     VAR* eval_list;
     
@@ -295,7 +295,7 @@ VAR* if_form(LIST* elt, ENV* env)
     return eval_list;
 }
 
-VAR* execute_form(VAR* ast,ENV* env)
+VAR* execute_form(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt;
@@ -319,12 +319,12 @@ VAR* execute_form(VAR* ast,ENV* env)
     return eval_list;
 }
 
-VAR* eval(VAR* ast,ENV* env)
+VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt,*env_elt;
     VAR* result = new_var();
-    ENV* new;
+    HASH* new;
     
     if (ast->type == S_LIST && ast->val.lval != NULL) {
         elt = ast->val.lval;
@@ -366,7 +366,7 @@ char* print(VAR* var)
     return print_str(var,true);
 }
      
-char* rep(char* s,ENV* env)
+char* rep(char* s,HASH* env)
 {
     char* output;
 
@@ -378,7 +378,7 @@ int main(void)
 {
     char* bufread;
     bool at_eof = false;
-    ENV* env = ns_get();
+    HASH* env = ns_get();
 
     /* define mal functions */
     rep("(def! not (fn* [x] (if x false true)))",env);
