@@ -178,6 +178,7 @@ VAR* arith(char type,LIST* list)
         }
     }
     while (elt != NULL) {
+        if (elt->var->type != S_INT) throw(mal_error("integer expected"));
         switch (type) {
             case '+':
                 result->val.ival += elt->var->val.ival;
@@ -568,6 +569,7 @@ VAR* b_nth(LIST* list)
     count = (list->next?list->next->var:&var_nil);
     if (islist(vlist->type) && count->type == S_INT) {
         if (vlist->type == S_VECTOR &&
+            count->val.ival >= 0 &&
             count->val.ival < vlist->val.vval->size ) {
             return vlist->val.vval->vector[count->val.ival];
         }
@@ -791,6 +793,59 @@ VAR* b_dissoc(LIST* list)
     return var;
 }
 
+VAR* b_contains(LIST* list)
+{
+    VAR* var = NULL;
+    
+    if (list && list->var->type == S_HASHMAP && list->next &&
+        isstr(list->next->var->type)) {
+        var = env_get(list->var->val.hval,
+                      print_str(list->next->var,false,true));
+    }
+    return (var?&var_true:&var_false);
+}
+
+VAR* b_keys(LIST* list)
+{
+    LIST* new_list = NULL;
+    SYM* sp;
+    ITER* iter;
+    VAR* var = &empty_list;
+    
+    if (list && list->var->type == S_HASHMAP) {
+        iter = env_iter_init(list->var->val.hval);
+        while ((sp=env_next(iter)) != NULL) {
+            var = str2var(sp->name);
+            new_list = append(new_list,var);
+        }
+        var = list2var(new_list);
+    }
+    return var;
+}
+
+VAR* b_vals(LIST* list)
+{
+    LIST* new_list = NULL;
+    SYM* sp;
+    ITER* iter;
+    VAR* var = &empty_list;
+    
+    if (list && list->var->type == S_HASHMAP) {
+        iter = env_iter_init(list->var->val.hval);
+        while ((sp=env_next(iter)) != NULL) {
+            new_list = append(new_list,sp->value);
+        }
+        var = list2var(new_list);
+    }
+    return var;
+}
+
+VAR* b_is_seq(LIST* list)
+{
+    return ((list && (list->var->type==S_LIST||list->var->type==S_VECTOR))?
+            &var_true:&var_false);
+}
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -836,7 +891,11 @@ struct s_builtin core_fn[] =
     {"map?",b_is_hash_map},
     {"assoc",b_assoc},
     {"dissoc",b_dissoc},
-    {"get",b_get}
+    {"get",b_get},
+    {"contains?",b_contains},
+    {"keys",b_keys},
+    {"vals",b_vals},
+    {"sequential?",b_is_seq}
 };
 
 static HASH* repl_env = NULL;
@@ -844,12 +903,12 @@ static HASH* repl_env = NULL;
 /* Insert inbuilt functions into ns namespace and return pointer */
 HASH* ns_get(void)
 {
-    HASH* env = new_env(101,NULL,NULL,NULL);
+    HASH* env;
     VAR* var;
     int i;
 
     if (repl_env != NULL) return repl_env; /* only one exists */
-    
+    env = new_env(101,NULL,NULL,NULL);
     for (i=0;i<(sizeof(core_fn)/sizeof(struct s_builtin));i++) {
         var = new_var();
         var->type = S_BUILTIN;
