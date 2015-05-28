@@ -95,7 +95,7 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             sp = env_next(iter);
             if (!sp) strcat(buffer," ");
             while (sp) {
-                strcat(buffer,sp->name);
+                print_str(str2var(sp->name),true,false);
                 strcat(buffer," ");
                 print_str(sp->value,true,false);
                 strcat(buffer," ");
@@ -167,6 +167,10 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             break;
         case S_ERROR:
             sprintf(tok,"error: %s.",var->val.pval);
+            if (print_readably) {
+                stringify(tok);
+                return buffer;
+            }
             break;
         default:
             sprintf(tok,"mal: unhandled type: %d",var->type);
