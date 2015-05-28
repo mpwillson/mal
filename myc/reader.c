@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "mal.h"
 #include "reader.h"
@@ -69,11 +70,28 @@ int lexer(void)
 {
 	char ch = ' ';
 	int i = 0, lexsym;
-
+    bool minus;
+    
+    minus = false;
 	lextok[0] = '\0';
-	while (ch == ' ' || ch == ',' || ch == '\t' || ch == '\n') ch = getlexchar();
+	while (ch == ' ' || ch == ',' || ch == '\t' || ch == '\n') {
+        ch = getlexchar();
+    }
+
+    /* check for negative number */
+    if (ch == '-') {
+        ch = getlexchar();
+        if (isdigit(ch) || ch == '.') {
+            minus = true;
+        }
+        else {
+            ungetlexchar(ch);
+            ch = '-';
+        }
+    }
 	if (isdigit(ch)) {
 		lexsym = S_INT;
+        if (minus) lextok[i++] = '-';
 		while ((isdigit(ch) || ch == '.') && i < LEXTOKSIZ) {
 			lextok[i++] = ch;
 			ch = getlexchar();
