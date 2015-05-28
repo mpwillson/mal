@@ -59,7 +59,7 @@ jmp_buf jmp_env;
 void mal_die(char* msg)
 {
     fprintf(stderr,"mal: FATAL: %s\n",msg);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 VAR* mal_error(const char *fmt, ...)
@@ -198,10 +198,8 @@ VAR* seq(VAR* var)
         hash = var->val.hval;
         iter = env_iter_init(hash);
         while ((sp = env_next(iter)) != NULL) {
-            seq_var = new_var();
-            seq_var->type = (sp->name[0] == ':'?S_KEYWORD:S_STR);
-            seq_var->val.pval = strsave(sp->name);
-            list = append(append(list,var),sp->value);
+            seq_var = str2var(sp->name);
+            list = append(append(list,seq_var),sp->value);
         }
         free(iter);
         return list2var(list);
@@ -260,6 +258,15 @@ VAR* last(LIST* list)
     }
     return elt->var;
 }    
+
+VAR* str2var(char* s)
+{
+    VAR* var = new_var();
+    
+    var->type = (s[0] == ':'?S_KEYWORD:S_STR);
+    var->val.pval = strsave((var->type==S_STR?s:s+1));
+    return var;
+}
 
 VAR* list2var(LIST* list)
 {
@@ -582,12 +589,7 @@ VAR* eval_ast(VAR* ast, HASH* env)
     if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
     if (ast->type == S_SYM) {
         var = env_get(env,ast->val.pval);
-        if (var == NULL) {
-            // error.val.pval =
-            throw(mal_error("'%s' not found",ast->val.pval));
-            return &error;
-        }
-        return var;
+        return (var?var:ast); /* symbol stands for itself if not bound */
     }
     else if (ast->type == S_VECTOR) {
         vec = ast->val.vval;
@@ -691,7 +693,7 @@ VAR* eval(VAR* ast,HASH* env)
                     ast = fn->forms;
                 }
                 else {
-                    throw(mal_error("'%s' not callable",
+                    throw(mal_error("'%s' not found",
                                     print_str(elt->var,true,true)));
                     return &error;
                 }
@@ -747,7 +749,7 @@ int execute_program(char* filename,int nargs,char* argv[],HASH* env)
         rep(cmd,env);
     }
     else {
-        fprintf(stderr,"%s\n",print_str(&error,true,true));
+        fprintf(stderr,"%s\n",print_str(&error,false,true));
     }
     return 0;
 }
@@ -791,7 +793,7 @@ int main(int argc, char* argv[])
     }
     else {
         if (setjmp(jmp_env) != 0) {
-            fprintf(stderr,"%s\n",print_str(thrown_var,true,true));
+            fprintf(stderr,"%s\n",print_str(thrown_var,false,true));
             if (bufread) free(bufread);
         }
         while (!at_eof) {
