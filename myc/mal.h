@@ -30,8 +30,8 @@
 #define S_COMMENT 24
 #define S_MACRO 25
 
-#define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
-                      t == S_HASHMAP)
+#define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR)/* ||    \
+                        t == S_HASHMAP) */
 #define isstr(t) (t == S_STR || t == S_SYM || t == S_KEYWORD)
 
 /* Forward references */
@@ -117,5 +117,6 @@ void throw(VAR*);
 VEC* mkvector(LIST*);
 VAR* seq(VAR*);
 struct s_hash* mkhashmap(LIST*);
+VAR* str2var(char*);
 
 #endif
