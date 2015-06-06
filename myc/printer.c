@@ -28,7 +28,8 @@
 #include "printer.h"
 #include "env.h"
 
-#define INITIAL_BUFSIZE 1024
+// FIXME: buffer overruns when printing large lists/functions/vectors/hashes 
+#define INITIAL_BUFSIZE 4096
 
 static char* buffer = NULL;
 static int buffer_size = INITIAL_BUFSIZE;

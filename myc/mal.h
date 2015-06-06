@@ -63,6 +63,7 @@ union u_val {
 struct s_var {
 	int type;
 	union u_val val;
+    bool marked;
 };
 
 struct s_list {
@@ -98,12 +99,7 @@ extern VAR empty_list;
 /* function prototypes */
 VAR* mal_error(const char *fmt, ...);
 void mal_die(char*);
-void free_var(VAR*);
-void free_list(LIST*);
-LIST* new_elt(void);
-VAR* new_var(void);
 LIST* append(LIST*,VAR*);
-char* strsave(char*);
 VAR* list2var(LIST*);
 VAR* repl_read(char *);
 VAR* eval(VAR*,struct s_hash *);

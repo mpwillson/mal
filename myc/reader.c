@@ -28,6 +28,8 @@
 
 #include "mal.h"
 #include "reader.h"
+#include "env.h"
+#include "mem.h"
 
 /* GLOBALS */
 
@@ -264,6 +266,10 @@ VAR* read_atom(int type,char *s)
             return &var_true;
         case S_FALSE:
             return &var_false;
+        default:
+            new = new_var();
+            new->type = type;
+            new->val.pval = strsave(s);
     }   
     return new;
 }
@@ -325,16 +331,17 @@ VAR* read_list(int type,char close)
         if (var->type != S_COMMENT) list = append(list,var);
         token_type = lexer();
     }
-    var = new_var();
     if (type != S_ROOT && token_type != close) {
-        /* var->type = S_ERROR; */
         throw(mal_error("terminating list character '%c' expected",close));
     }
-    else if (type == S_VECTOR) {
+    var = new_var();
+    if (type == S_VECTOR) {
         var->val.vval = mkvector(list);
+        free_elts(list);
     }
     else if (type == S_HASHMAP) {
         var->val.hval = mkhashmap(list);
+        free_elts(list);
     }
     else {
         var->val.lval = list;
@@ -347,7 +354,6 @@ VAR* read_form(int token_type)
 {
     VAR* var;
 
-    var = new_var();
     switch (token_type) {
         case '(':
             var = read_list(S_LIST,')');
@@ -369,11 +375,13 @@ VAR* read_form(int token_type)
             var = handle_meta();
             break;
         case S_USTR:
-            var->type = S_ERROR;
+            /* var = new_var(); */
+            /* var->type = S_ERROR; */
             throw(mal_error("unterminated string"));
             break;
         case S_COMMENT:
             //var = read_form(lexer());
+            var = new_var();
             var->type = S_COMMENT;
             var->val.pval = strsave(lextok);
             break;

@@ -27,28 +27,19 @@
 #include "printer.h"
 #include "reader.h"
 #include "env.h"
+#include "mem.h"
 
 HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
 {
     HASH* env;
-    int i;
-    SYM** sym;
     LIST* bind_list = NULL, *expr_list;
     VAR* rest;
     LIST nil_elt = {&var_nil,NULL};
 
     /* Initialise new env instance */
-    env = (HASH*) malloc(sizeof(HASH));
-    if (!env) mal_die("out of memory in new_env (env)");
-    env->size = size;
-    env->closure = false;
+    env = new_hash(size);
     env->outer = outer;
-    env->sym = (SYM**) malloc(sizeof(SYM*)*size);
-    if (!env->sym) mal_die("out of memory in new_env (sym)");
-    sym = env->sym;
-    for (i=0;i<size;i++) {
-        *sym++ = NULL;
-    }
+    
     /* Run through binds list. Handle & (all subsequent args are bound
        as a list to the following binds symbol).  Where binds exist
        without an arg, binds are set to nil.
@@ -77,6 +68,7 @@ HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
             expr_list = (expr_list->next==NULL?&nil_elt:expr_list->next);
         }
     }
+    env_add(env);
     return env;
 }
 
@@ -161,18 +153,15 @@ void env_free(HASH* env)
 {
     SYM* sp,*last_sp;
     int i;
+    
     if (env->closure) return;
     for (i=0;i<env->size;i++) {
-        if (env->sym[i] != NULL) {
+        if ((sp=env->sym[i])) {
             while (sp != NULL) {
                 sp = env->sym[i];
                 last_sp = sp;
-                /* VARs may be required for results passed back to
-                 * outer environment.  TBD: Handle all this garbage
-                 * that is being created */
-                /* free(sp->name); */
-                /* free_var(sp->value); */
                 sp = sp->next;
+                free(last_sp->name);
                 free(last_sp);
             }
         }
@@ -192,7 +181,7 @@ ITER* env_iter_init(HASH* h)
 
     iter = (ITER*) malloc(sizeof(ITER));
     if (iter == NULL) {
-        mal_die("out of memeory at env_iter_init");
+        mal_die("out of memory at env_iter_init");
     }
     iter->hash = h;
     iter->sp = NULL;
@@ -227,7 +216,7 @@ void env_dump(HASH* env)
     
     iter = env_iter_init(env);
     while ((sp = env_next(iter)) != NULL) {
-        printf("%-24s:%s\n",
+        printf("%-24s%s\n",
                sp->name,print_str(sp->value,true,true));
     }
     free(iter);

@@ -12,6 +12,7 @@
 #include "printer.h"
 #include "env.h"
 #include "core.h"
+#include "mem.h"
     
 #define BUFSIZE 1024
 
@@ -81,76 +82,16 @@ void throw(VAR* thrown)
     return;
 }
 
-char *strsave(char *s)
-{
-	char *p;
-
-	p = (char *) malloc(strlen(s)+1);
-	if (p != NULL) 	strcpy(p,s);
-	return p;
-}
-
-LIST* new_elt() {
-    LIST* elt;
-    
-    elt = (LIST *) malloc(sizeof(LIST));
-    if (elt == NULL) {
-        mal_die("out of memory at new_elt.");
-    }
-    elt->var = NULL;
-    elt->next = NULL;
-    return elt;
-}
-
-VAR* new_var() {
-    VAR* var;
-    
-    var = (VAR *) malloc(sizeof(VAR));
-    if (var == NULL)  {
-        mal_die("out of memory at new_var.");
-    }
-    var->type = S_UNDEF;
-    var->val.lval = NULL;
-    return var;
-}
-      
-FN* new_fn()
-{
-    FN* fn;
-
-    fn = (FN*) malloc(sizeof(FN));
-    if (fn == NULL) {
-        mal_die("out of memory at new_fn");
-    }
-    fn->args = NULL;
-    fn->forms = NULL;
-    fn->env = NULL;
-    return fn;
-}
-
-VEC* new_vec()
-{
-    VEC* vec;
-
-    vec = (VEC*) malloc(sizeof(VEC));
-    if (vec == NULL) {
-        mal_die("out of memory at new_vec");
-    }
-    vec->size = 0;
-    vec->vector = NULL;
-    return vec;
-}
 
 VEC* mkvector(LIST* list)
 {
-    VEC* vec = new_vec();
+    VEC* vec;
     VAR** v;
     LIST* elt;
     int size;
 
     size = count(list);
-    vec->size = size;
-    vec->vector = (VAR**) malloc(sizeof(VEC*)*size);
+    vec = new_vec(size);
     elt = list;
     v = vec->vector;
     while (elt) {
@@ -162,7 +103,7 @@ VEC* mkvector(LIST* list)
 
 HASH* mkhashmap(LIST* list)
 {
-    HASH* hash = new_env(37,NULL,NULL,NULL);
+    HASH* hash = new_hash(37);
     LIST* elt;
     int size;
 
@@ -208,30 +149,6 @@ VAR* seq(VAR* var)
         return var;
     }
     return &var_nil;
-}
-
-void free_var(VAR* var)
-{
-    if (isstr(var->type)) {
-        free(var->val.pval);
-    }
-    else if (islist(var->type)) {
-        free_list(var->val.lval);
-    }
-    free(var);
-}
-
-void free_list(LIST* list)
-{
-    LIST* elt, *last_elt;
-
-    elt = list;
-    while (elt != NULL) {
-        last_elt = elt;
-        free_var(elt->var);
-        elt = elt->next;
-        free(last_elt);
-    }
 }
 
 VAR* but_last(LIST* list)
@@ -385,19 +302,20 @@ VAR* try_catch_form(LIST* list, HASH* env)
  */
 VAR* fn_form(LIST* list,HASH *env,int type)
 {
-    FN* fn = new_fn();
-    VAR* fn_var = new_var();
+    FN* fn;
+    VAR* fn_var = &var_nil;
 
     if (list) {
+        fn = new_fn();
+        fn_var = new_var();
         fn->args = list->var;
-        fn->forms = cons(&do_var,list->next);
+        fn->forms = cons(&do_var,deep_copy_list(list->next));
         env->closure = true;
         fn->env = env;
         fn_var->type = type;
         fn_var->val.fval = fn;
-        return fn_var;
     }
-    return &var_nil;
+    return fn_var;
 }
 
 FN* is_macro_call(VAR* ast,HASH* env)
@@ -498,7 +416,6 @@ HASH* let_env(LIST* elt,HASH *env)
         env_elt = seq(elt->var)->val.lval;
         while (env_elt != NULL) {
             if (env_elt->next == NULL) {
-                free(env);
                 return NULL;
             }
             eval_list = eval(env_elt->next->var,new);
@@ -577,7 +494,7 @@ VAR* handle_quasiquote(VAR* ast)
 VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
-    VAR* list_var = new_var();
+    VAR* list_var;
     LIST* list = NULL;
     LIST* elt;
     VEC* vec;
@@ -614,6 +531,7 @@ VAR* eval_ast(VAR* ast, HASH* env)
             list = append(list,evaled_var);
             elt = elt->next;
         }
+        list_var = new_var();
         list_var->type = ast->type;
         list_var->val.lval = list;
         return list_var;
@@ -725,8 +643,13 @@ char* print(VAR* var)
 char* rep(char* s,HASH* env)
 {
     char* output;
-
-    output = print(eval(repl_read(s),env));
+    VAR* current_form,*result;
+    
+    current_form = repl_read(s);
+    env_put(env,"*0",current_form); /* protect from gc */
+    result = eval(current_form,env);
+    env_put(env,"*1",result);
+    output = print(result);
     return output;
 }
 
@@ -761,29 +684,29 @@ int main(int argc, char* argv[])
     HASH* env = ns_get();
 
     /* define mal functions and macros */
-    rep("(def! not (fn* [x] (if x false true)))",env);
-    rep("(def! load-file (fn* (f) (eval (read-string "
-        "(str \"(do\" (slurp f) \"\\n)\")))))",env);
-    rep("(defmacro! or (fn* (& xs) "
-        "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) "
-        "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME "
-        "(or ~@(rest xs))))))))",env);
-    rep("(defmacro! and (fn* (& xs) "
-        "(if (empty? xs) true (if (= 1 (count xs)) (first xs) "
-        "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME "
-        "(and ~@(rest xs))))))))",env);
-    rep("(defmacro! cond (fn* (& xs) "
-        "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) "
-        "(nth xs 1) (throw \"odd number of forms to cond\")) "
-        "(cons 'cond (rest (rest xs)))))))",env);
-    rep("(defmacro! -> (fn* [x & xs]"
-        "(if (empty? xs) x"
-        "(let* (x_ (first xs) nelt_ (count x_))"
-        "(if (= nelt_ 0) "
-        "`(-> (~x_ ~x) ~@(rest xs))"
-        "(if (= nelt_ 1)"
-        "`(-> (~(first x_) ~x) ~@(rest xs))"
-        "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env);
+    /* rep("(def! not (fn* [x] (if x false true)))",env); */
+    /* rep("(def! load-file (fn* (f) (eval (read-string " */
+    /*     "(str \"(do\" (slurp f) \"\\n)\")))))",env); */
+    /* rep("(defmacro! or (fn* (& xs) " */
+    /*     "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) " */
+    /*     "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME " */
+    /*     "(or ~@(rest xs))))))))",env); */
+    /* rep("(defmacro! and (fn* (& xs) " */
+    /*     "(if (empty? xs) true (if (= 1 (count xs)) (first xs) " */
+    /*     "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME " */
+    /*     "(and ~@(rest xs))))))))",env); */
+    /* rep("(defmacro! cond (fn* (& xs) " */
+    /*     "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) " */
+    /*     "(nth xs 1) (throw \"odd number of forms to cond\")) " */
+    /*     "(cons 'cond (rest (rest xs)))))))",env); */
+    /* rep("(defmacro! -> (fn* [x & xs]" */
+    /*     "(if (empty? xs) x" */
+    /*     "(let* (x_ (first xs) nelt_ (count x_))" */
+    /*     "(if (= nelt_ 0) " */
+    /*     "`(-> (~x_ ~x) ~@(rest xs))" */
+    /*     "(if (= nelt_ 1)" */
+    /*     "`(-> (~(first x_) ~x) ~@(rest xs))" */
+    /*     "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env); */
     
     env_put(env,"*ARGV*",list2var(NULL));
     
@@ -807,7 +730,6 @@ int main(int argc, char* argv[])
             }
             free(bufread);
         }
-        env_free(env);
         fprintf(stdout,"\n");
     }
     return EXIT_SUCCESS;

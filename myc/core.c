@@ -9,6 +9,7 @@
 #include "env.h"
 #include "core.h"
 #include "printer.h"
+#include "mem.h"
 
 struct s_builtin {
     char* name;
@@ -479,6 +480,69 @@ VAR* b_cons(LIST* list)
     return &error;
 }
 
+HASH* copy_hashmap(HASH* hash)
+{
+    HASH* new;
+    SYM* sp;
+    ITER* iter;
+    
+    new = new_env(hash->size,NULL,NULL,NULL);
+    iter = env_iter_init(hash);
+    while ((sp=env_next(iter))) {
+        env_put(new,sp->name,sp->value);
+    }
+    free(iter);
+    return new;
+}
+
+// FIXME
+VEC* copy_vector(VEC* vec)
+{
+    return vec;
+}
+
+VAR* copy_var(VAR* var)
+{
+    VAR* new = new_var();
+
+    new->type = var->type;
+    switch (var->type) {
+        case S_ROOT:
+        case S_LIST:
+            new->val.lval = copy_list(var->val.lval);
+            break;
+        case S_VECTOR:
+            new->val.vval = copy_vector(var->val.vval);
+            break;
+        case S_HASHMAP:
+            new->val.hval = copy_hashmap(var->val.hval);
+            break;
+        case S_STR:
+        case S_KEYWORD:
+        case S_SYM:
+            new->val.pval = strsave(var->val.pval);
+            break;
+        default:
+            new->val = var->val;
+    }
+    return new;
+}
+            
+LIST* deep_copy_list(LIST* list)
+{
+    LIST* new_list = NULL;
+    LIST* elt;
+    VAR* var;
+
+    elt = list;
+    while (elt) {
+        var = copy_var(elt->var);
+        new_list = append(new_list,var);
+        elt = elt->next;
+    }
+    return new_list;
+}
+
 /* Return new list, created from argument.  Vars that point to data
  * (e.g. strings) continue to point to the original data. */
 LIST* copy_list(LIST* list)
@@ -739,8 +803,6 @@ VAR* b_assoc(LIST* list)
     LIST* elt;
     VAR* var = &var_nil;
     HASH* hash, *new_hash;
-    ITER* iter;
-    SYM* sp;
     int size;
 
     if (list && list->var->type == S_HASHMAP) {
@@ -748,11 +810,7 @@ VAR* b_assoc(LIST* list)
         elt = list->next;
         size = count(elt);
         if (size%2 != 0) throw(mal_error("assoc has odd number of forms"));
-        new_hash = new_env(37,NULL,NULL,NULL);
-        iter = env_iter_init(hash);
-        while ((sp=env_next(iter)) != NULL) {
-            env_put(new_hash,sp->name,sp->value);
-        }
+        new_hash = copy_hashmap(hash);
         while (elt) {
             env_put(new_hash,print_str(elt->var,false,true),elt->next->var);
             elt = elt->next->next;
@@ -760,7 +818,6 @@ VAR* b_assoc(LIST* list)
         var = new_var();
         var->type = S_HASHMAP;
         var->val.hval = new_hash;
-        free(iter);
     }
     return var;
 }
@@ -770,17 +827,11 @@ VAR* b_dissoc(LIST* list)
     LIST* elt;
     VAR* var = &var_nil;
     HASH* hash, *new_hash;
-    ITER* iter;
-    SYM* sp;
 
     if (list && list->var->type == S_HASHMAP) {
         hash = list->var->val.hval;
         elt = list->next;
-        new_hash = new_env(37,NULL,NULL,NULL);
-        iter = env_iter_init(hash);
-        while ((sp=env_next(iter)) != NULL) {
-            env_put(new_hash,sp->name,sp->value);
-        }
+        new_hash = copy_hashmap(hash);
         while (elt) {
             env_del(new_hash,print_str(elt->var,false,true));
             elt = elt->next;
@@ -788,7 +839,6 @@ VAR* b_dissoc(LIST* list)
         var = new_var();
         var->type = S_HASHMAP;
         var->val.hval = new_hash;
-        free(iter);
     }
     return var;
 }
@@ -846,56 +896,70 @@ VAR* b_is_seq(LIST* list)
             &var_true:&var_false);
 }
 
+VAR* b_print_mem(LIST* list)
+{
+    print_mem();
+    return &var_nil;
+}
+
+VAR* b_gc(LIST* list)
+{
+    gc();
+    return &var_nil;
+}
+
 struct s_builtin core_fn[] =
 {
-    {"+",b_plus},
-    {"-",b_minus},
-    {"*",b_mul},
-    {"/",b_div},
-    {"list",b_list},
-    {"count",b_count},
-    {"list?",b_listp},
-    {"empty?",b_emptyp},
-    {"=",b_equalp},
-    {"<",b_lessthanp},
-    {"<=",b_lessthaneqp},
-    {">",b_greaterthanp},
-    {">=",b_greaterthaneqp},
-    {"pr-str",b_pr_str},
-    {"str",b_str},
-    {"prn",b_prn},
-    {"println",b_println},
-    {"read-string",b_read_string},
-    {"slurp",b_slurp},
-    {"eval",b_eval},
-    {"cons",b_cons},
-    {"concat",b_concat},
-    {"first",b_first},
-    {"second",b_second},
-    {"rest",b_rest},
-    {"nth",b_nth},
-    {"throw",b_throw},
-    {"apply",b_apply},
-    {"map",b_map},
-    {"nil?",b_nil},
-    {"true?",b_true},
-    {"false?",b_false},
-    {"symbol?",b_is_symbol},
-    {"symbol",b_symbol},
-    {"keyword?",b_is_keyword},
-    {"keyword",b_keyword},
-    {"vector?",b_is_vector},
-    {"vector",b_vector},
+    /* {"+",b_plus}, */
+    /* {"-",b_minus}, */
+    /* {"*",b_mul}, */
+    /* {"/",b_div}, */
+    /* {"list",b_list}, */
+    /* {"count",b_count}, */
+    /* {"list?",b_listp}, */
+    /* {"empty?",b_emptyp}, */
+    /* {"=",b_equalp}, */
+    /* {"<",b_lessthanp}, */
+    /* {"<=",b_lessthaneqp}, */
+    /* {">",b_greaterthanp}, */
+    /* {">=",b_greaterthaneqp}, */
+    /* {"pr-str",b_pr_str}, */
+    /* {"str",b_str}, */
+    /* {"prn",b_prn}, */
+    /* {"println",b_println}, */
+    /* {"read-string",b_read_string}, */
+    /* {"slurp",b_slurp}, */
+    /* {"eval",b_eval}, */
+    /* {"cons",b_cons}, */
+    /* {"concat",b_concat}, */
+    /* {"first",b_first}, */
+    /* {"second",b_second}, */
+    /* {"rest",b_rest}, */
+    /* {"nth",b_nth}, */
+    /* {"throw",b_throw}, */
+    /* {"apply",b_apply}, */
+    /* {"map",b_map}, */
+    /* {"nil?",b_nil}, */
+    /* {"true?",b_true}, */
+    /* {"false?",b_false}, */
+    /* {"symbol?",b_is_symbol}, */
+    /* {"symbol",b_symbol}, */
+    /* {"keyword?",b_is_keyword}, */
+    /* {"keyword",b_keyword}, */
+    /* {"vector?",b_is_vector}, */
+    /* {"vector",b_vector}, */
+    /* {"hash-map",b_hash_map}, */
+    /* {"map?",b_is_hash_map}, */
+    /* {"assoc",b_assoc}, */
+    /* {"dissoc",b_dissoc}, */
+    /* {"get",b_get}, */
+    /* {"contains?",b_contains}, */
+    /* {"keys",b_keys}, */
+    /* {"vals",b_vals}, */
+    /* {"sequential?",b_is_seq}, */
     {"print-env",b_print_env},
-    {"hash-map",b_hash_map},
-    {"map?",b_is_hash_map},
-    {"assoc",b_assoc},
-    {"dissoc",b_dissoc},
-    {"get",b_get},
-    {"contains?",b_contains},
-    {"keys",b_keys},
-    {"vals",b_vals},
-    {"sequential?",b_is_seq}
+    {"print-mem",b_print_mem},
+    {"gc",b_gc}
 };
 
 static HASH* repl_env = NULL;
@@ -909,6 +973,7 @@ HASH* ns_get(void)
 
     if (repl_env != NULL) return repl_env; /* only one exists */
     env = new_env(101,NULL,NULL,NULL);
+    env->closure = true;
     for (i=0;i<(sizeof(core_fn)/sizeof(struct s_builtin));i++) {
         var = new_var();
         var->type = S_BUILTIN;
