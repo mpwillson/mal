@@ -34,7 +34,7 @@ HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
     HASH* env;
     LIST* bind_list = NULL, *expr_list;
     VAR* rest;
-    LIST nil_elt = {&var_nil,NULL};
+    LIST nil_elt = {&var_nil,1,NULL};
 
     /* Initialise new env instance */
     env = new_hash(size);

@@ -113,7 +113,14 @@ LIST* new_elt() {
     }
     mem_inuse.nelts++;
     elt->var = NULL;
+    elt->refs = 0;
     elt->next = NULL;
+    return elt;
+}
+
+LIST* ref_elt(LIST* elt)
+{
+    elt->refs++;
     return elt;
 }
 
@@ -172,11 +179,13 @@ void free_elts(LIST* list)
     while (elt) {
         last_elt = elt;
         elt = elt->next;
-        if (!last_elt->var->marked) {
+        if (last_elt->refs == 1) {
             free(last_elt);
             mem_inuse.nelts--;
         }
         else {
+            printf("elt ref --\n");
+            last_elt->refs--;
             return;
         }
     }

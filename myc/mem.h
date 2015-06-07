@@ -14,5 +14,6 @@ void env_add(HASH*);
 HASH* new_hash(int);
 void gc(void);
 void* mal_malloc(size_t);
+LIST* ref_elt(LIST*);
 
 #endif

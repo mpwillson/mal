@@ -68,6 +68,7 @@ struct s_var {
 
 struct s_list {
     VAR *var;
+    int refs;
     struct s_list *next;
 };
 

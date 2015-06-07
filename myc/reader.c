@@ -234,7 +234,6 @@ char* list_close(int type)
             return "}";
     }
     return "";
-    
 }
 
 /* Return atom, created from type and value */
@@ -252,13 +251,6 @@ VAR* read_atom(int type,char *s)
             new = new_var();
             new->type = type;
             new->val.rval = strtod(s,NULL);
-            break;
-        case S_SYM:
-        case S_STR:
-        case S_KEYWORD:
-            new = new_var();
-            new->type = type;
-            new->val.pval = strsave(s);
             break;
         case S_NIL:
             return &var_nil;
@@ -297,12 +289,7 @@ VAR* handle_quote(int token_type)
             break;
     }
     form = read_form(lexer());
-    if (form->type == S_ERROR) {
-        return form;
-    }
-    else {
-        return list2var(append(append(NULL,quote_type),form));
-    }
+    return list2var(append(append(NULL,quote_type),form));
 }
 
 VAR* handle_meta()
@@ -311,8 +298,6 @@ VAR* handle_meta()
     VAR* object_form = read_form(lexer());
     LIST* new = NULL;
 
-    if (meta_form->type == S_ERROR) return meta_form;
-    if (object_form->type == S_ERROR) return object_form;
     new = append(new,&meta);
     new = append(new,object_form);
     new = append(new,meta_form);
@@ -352,7 +337,7 @@ VAR* read_list(int type,char close)
 
 VAR* read_form(int token_type)
 {
-    VAR* var;
+    VAR* var = NULL;
 
     switch (token_type) {
         case '(':
@@ -375,12 +360,9 @@ VAR* read_form(int token_type)
             var = handle_meta();
             break;
         case S_USTR:
-            /* var = new_var(); */
-            /* var->type = S_ERROR; */
             throw(mal_error("unterminated string"));
             break;
         case S_COMMENT:
-            //var = read_form(lexer());
             var = new_var();
             var->type = S_COMMENT;
             var->val.pval = strsave(lextok);

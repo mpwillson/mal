@@ -456,7 +456,7 @@ VAR* cons(VAR* var,LIST* list)
     VAR* new = new_var();
 
     elt->var = var;
-    elt->next = list;
+    elt->next = ref_elt(list);
     new->type = S_LIST;
     new->val.lval = elt;
     return new;
@@ -570,7 +570,7 @@ LIST* concat(LIST* l1, LIST* l2)
     while (elt->next) {
         elt = elt->next;
     }
-    elt->next = l2;
+    elt->next = ref_elt(l2);
     return l1;
     
 }

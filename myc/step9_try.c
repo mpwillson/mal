@@ -198,7 +198,7 @@ LIST* append(LIST* list,VAR* var)
 {
     LIST *elt,*current;
 
-    elt = new_elt();
+    elt = ref_elt(new_elt());
     elt->var = var;
     if (list == NULL) {
         return elt;
