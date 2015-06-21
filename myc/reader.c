@@ -327,9 +327,10 @@ VAR* read_list(int type,char close)
     else if (type == S_HASHMAP) {
         var->val.hval = mkhashmap(list);
         free_elts(list);
+        if (!var->val.hval) throw(mal_error("odd number of forms for hashmap"));
     }
     else {
-        var->val.lval = list;
+        var->val.lval = ref_elt(list);
     }
     var->type = type;
     return var;

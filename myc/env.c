@@ -39,7 +39,7 @@ HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
     /* Initialise new env instance */
     env = new_hash(size);
     env->outer = outer;
-    
+    env_add(env);
     /* Run through binds list. Handle & (all subsequent args are bound
        as a list to the following binds symbol).  Where binds exist
        without an arg, binds are set to nil.
@@ -59,7 +59,7 @@ HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
                 bind_list = bind_list->next;
                 rest = new_var();
                 rest->type = S_LIST;
-                rest->val.lval = (expr_list==&nil_elt?NULL:expr_list);
+                rest->val.lval = (expr_list==&nil_elt?NULL:ref_elt(expr_list));
                 env_put(env,bind_list->var->val.pval,rest);
                 return env;
             }
@@ -68,14 +68,13 @@ HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
             expr_list = (expr_list->next==NULL?&nil_elt:expr_list->next);
         }
     }
-    env_add(env);
     return env;
 }
 
 static int hashed(HASH* env,char *s)  
 {
 	int hashval;
-   
+
 	for (hashval=0; *s != '\0'; ) hashval += *s++;
 	return (hashval%(env->size));
 }

@@ -103,12 +103,13 @@ VEC* mkvector(LIST* list)
 
 HASH* mkhashmap(LIST* list)
 {
-    HASH* hash = new_hash(37);
+    HASH* hash;
     LIST* elt;
     int size;
 
     size = count(list);
-    if (size%2 == 1) throw(mal_error("odd number of forms for hashmap"));
+    if (size%2 == 1) return NULL;
+    hash = new_hash(37);
     elt = list;
     while (elt) {
         env_put(hash,print_str(elt->var,false,true),elt->next->var);
@@ -190,7 +191,7 @@ VAR* list2var(LIST* list)
     VAR* var = new_var();
 
     var->type = S_LIST;
-    var->val.lval = list;
+    var->val.lval = ref_elt(list); 
     return var;
 }
 
@@ -198,7 +199,7 @@ LIST* append(LIST* list,VAR* var)
 {
     LIST *elt,*current;
 
-    elt = ref_elt(new_elt());
+    elt = new_elt();
     elt->var = var;
     if (list == NULL) {
         return elt;
@@ -206,7 +207,7 @@ LIST* append(LIST* list,VAR* var)
     else {
         current = list;
         while (current->next != NULL) current = current->next;
-        current->next = elt;
+        current->next = ref_elt(elt);
     }
     return list;
 }
@@ -253,9 +254,7 @@ VAR* rest(VAR* var)
     if (is_pair(var)) {
         var = seq(var);
         if (var->val.lval->next) {
-            rest_var = new_var();   	
-            rest_var->type = S_LIST;
-            rest_var->val.lval = var->val.lval->next;
+            rest_var = list2var(var->val.lval->next);
         }
     }
     return rest_var;
@@ -309,7 +308,7 @@ VAR* fn_form(LIST* list,HASH *env,int type)
         fn = new_fn();
         fn_var = new_var();
         fn->args = list->var;
-        fn->forms = cons(&do_var,deep_copy_list(list->next));
+        fn->forms = cons(&do_var,ref_elt(list->next));
         env->closure = true;
         fn->env = env;
         fn_var->type = type;
@@ -479,8 +478,7 @@ VAR* handle_quasiquote(VAR* ast)
     if (DEBUG && elt) printf("qq: recursive arg: %s\n",
                              print_str(list2var(elt),true,true));
     if (elt) {
-        new_list = append(new_list,handle_quasiquote(list2var(elt)));
-        rest = new_list->var;
+        rest = handle_quasiquote(list2var(elt));
     }
     else {
         rest = list2var(NULL);
@@ -533,7 +531,7 @@ VAR* eval_ast(VAR* ast, HASH* env)
         }
         list_var = new_var();
         list_var->type = ast->type;
-        list_var->val.lval = list;
+        list_var->val.lval = ref_elt(list);
         return list_var;
     }
     return ast;
@@ -684,29 +682,29 @@ int main(int argc, char* argv[])
     HASH* env = ns_get();
 
     /* define mal functions and macros */
-    /* rep("(def! not (fn* [x] (if x false true)))",env); */
-    /* rep("(def! load-file (fn* (f) (eval (read-string " */
-    /*     "(str \"(do\" (slurp f) \"\\n)\")))))",env); */
-    /* rep("(defmacro! or (fn* (& xs) " */
-    /*     "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) " */
-    /*     "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME " */
-    /*     "(or ~@(rest xs))))))))",env); */
-    /* rep("(defmacro! and (fn* (& xs) " */
-    /*     "(if (empty? xs) true (if (= 1 (count xs)) (first xs) " */
-    /*     "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME " */
-    /*     "(and ~@(rest xs))))))))",env); */
-    /* rep("(defmacro! cond (fn* (& xs) " */
-    /*     "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) " */
-    /*     "(nth xs 1) (throw \"odd number of forms to cond\")) " */
-    /*     "(cons 'cond (rest (rest xs)))))))",env); */
-    /* rep("(defmacro! -> (fn* [x & xs]" */
-    /*     "(if (empty? xs) x" */
-    /*     "(let* (x_ (first xs) nelt_ (count x_))" */
-    /*     "(if (= nelt_ 0) " */
-    /*     "`(-> (~x_ ~x) ~@(rest xs))" */
-    /*     "(if (= nelt_ 1)" */
-    /*     "`(-> (~(first x_) ~x) ~@(rest xs))" */
-    /*     "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env); */
+    rep("(def! not (fn* [x] (if x false true)))",env);
+    rep("(def! load-file (fn* (f) (eval (read-string "
+        "(str \"(do\" (slurp f) \"\\n)\")))))",env);
+    rep("(defmacro! or (fn* (& xs) "
+        "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) "
+        "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME "
+        "(or ~@(rest xs))))))))",env);
+    rep("(defmacro! and (fn* (& xs) "
+        "(if (empty? xs) true (if (= 1 (count xs)) (first xs) "
+        "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME "
+        "(and ~@(rest xs))))))))",env);
+    rep("(defmacro! cond (fn* (& xs) "
+        "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) "
+        "(nth xs 1) (throw \"odd number of forms to cond\")) "
+        "(cons 'cond (rest (rest xs)))))))",env);
+    rep("(defmacro! -> (fn* [x & xs]"
+        "(if (empty? xs) x"
+        "(let* (x_ (first xs) nelt_ (count x_))"
+        "(if (= nelt_ 0) "
+        "`(-> (~x_ ~x) ~@(rest xs))"
+        "(if (= nelt_ 1)"
+        "`(-> (~(first x_) ~x) ~@(rest xs))"
+        "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env);
     
     env_put(env,"*ARGV*",list2var(NULL));
     

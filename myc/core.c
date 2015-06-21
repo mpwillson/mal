@@ -458,7 +458,7 @@ VAR* cons(VAR* var,LIST* list)
     elt->var = var;
     elt->next = ref_elt(list);
     new->type = S_LIST;
-    new->val.lval = elt;
+    new->val.lval = ref_elt(elt);
     return new;
 }
 
@@ -579,23 +579,22 @@ VAR* b_concat(LIST* list)
 {
     LIST* new = NULL;
     LIST* elt;
-    VAR* var = new_var();
     
     elt = list;
     while (elt) {
         if (islist(elt->var->type)) {
             if (new) {
-                new = concat(new,copy_list(seq(elt->var)->val.lval));
+                /* new = concat(new,copy_list(seq(elt->var)->val.lval)); */
+                new = concat(new,seq(elt->var)->val.lval);
             }
             else {
-                new = copy_list(seq(elt->var)->val.lval);
+                /* new = copy_list(seq(elt->var)->val.lval); */
+                new = seq(elt->var)->val.lval;
             }
         }
         elt = elt->next;
     }
-    var->type = S_LIST;
-    var->val.lval = new;
-    return var;
+    return list2var(new);
 }
 
 VAR* b_first(LIST *list)
@@ -773,10 +772,14 @@ VAR* b_print_env(LIST* list)
 
 VAR* b_hash_map(LIST* list)
 {
-    VAR* var = new_var();
-
+    VAR* var;
+    HASH* hash;
+    
+    hash = mkhashmap(list);
+    if (!hash) throw(mal_error("odd number of forms for hashmap"));
+    var = new_var();
     var->type = S_HASHMAP;
-    var->val.hval = mkhashmap(list);
+    var->val.hval = hash;
     return var;
 }
 
@@ -868,6 +871,7 @@ VAR* b_keys(LIST* list)
             var = str2var(sp->name);
             new_list = append(new_list,var);
         }
+        free(iter);
         var = list2var(new_list);
     }
     return var;
@@ -885,6 +889,7 @@ VAR* b_vals(LIST* list)
         while ((sp=env_next(iter)) != NULL) {
             new_list = append(new_list,sp->value);
         }
+        free(iter);
         var = list2var(new_list);
     }
     return var;
@@ -910,53 +915,53 @@ VAR* b_gc(LIST* list)
 
 struct s_builtin core_fn[] =
 {
-    /* {"+",b_plus}, */
-    /* {"-",b_minus}, */
-    /* {"*",b_mul}, */
-    /* {"/",b_div}, */
-    /* {"list",b_list}, */
-    /* {"count",b_count}, */
-    /* {"list?",b_listp}, */
-    /* {"empty?",b_emptyp}, */
-    /* {"=",b_equalp}, */
-    /* {"<",b_lessthanp}, */
-    /* {"<=",b_lessthaneqp}, */
-    /* {">",b_greaterthanp}, */
-    /* {">=",b_greaterthaneqp}, */
-    /* {"pr-str",b_pr_str}, */
-    /* {"str",b_str}, */
-    /* {"prn",b_prn}, */
-    /* {"println",b_println}, */
-    /* {"read-string",b_read_string}, */
-    /* {"slurp",b_slurp}, */
-    /* {"eval",b_eval}, */
-    /* {"cons",b_cons}, */
-    /* {"concat",b_concat}, */
-    /* {"first",b_first}, */
-    /* {"second",b_second}, */
-    /* {"rest",b_rest}, */
-    /* {"nth",b_nth}, */
-    /* {"throw",b_throw}, */
-    /* {"apply",b_apply}, */
-    /* {"map",b_map}, */
-    /* {"nil?",b_nil}, */
-    /* {"true?",b_true}, */
-    /* {"false?",b_false}, */
-    /* {"symbol?",b_is_symbol}, */
-    /* {"symbol",b_symbol}, */
-    /* {"keyword?",b_is_keyword}, */
-    /* {"keyword",b_keyword}, */
-    /* {"vector?",b_is_vector}, */
-    /* {"vector",b_vector}, */
-    /* {"hash-map",b_hash_map}, */
-    /* {"map?",b_is_hash_map}, */
-    /* {"assoc",b_assoc}, */
-    /* {"dissoc",b_dissoc}, */
-    /* {"get",b_get}, */
-    /* {"contains?",b_contains}, */
-    /* {"keys",b_keys}, */
-    /* {"vals",b_vals}, */
-    /* {"sequential?",b_is_seq}, */
+    {"+",b_plus},
+    {"-",b_minus},
+    {"*",b_mul},
+    {"/",b_div},
+    {"list",b_list},
+    {"count",b_count},
+    {"list?",b_listp},
+    {"empty?",b_emptyp},
+    {"=",b_equalp},
+    {"<",b_lessthanp},
+    {"<=",b_lessthaneqp},
+    {">",b_greaterthanp},
+    {">=",b_greaterthaneqp},
+    {"pr-str",b_pr_str},
+    {"str",b_str},
+    {"prn",b_prn},
+    {"println",b_println},
+    {"read-string",b_read_string},
+    {"slurp",b_slurp},
+    {"eval",b_eval},
+    {"cons",b_cons},
+    {"concat",b_concat},
+    {"first",b_first},
+    {"second",b_second},
+    {"rest",b_rest},
+    {"nth",b_nth},
+    {"throw",b_throw},
+    {"apply",b_apply},
+    {"map",b_map},
+    {"nil?",b_nil},
+    {"true?",b_true},
+    {"false?",b_false},
+    {"symbol?",b_is_symbol},
+    {"symbol",b_symbol},
+    {"keyword?",b_is_keyword},
+    {"keyword",b_keyword},
+    {"vector?",b_is_vector},
+    {"vector",b_vector},
+    {"hash-map",b_hash_map},
+    {"map?",b_is_hash_map},
+    {"assoc",b_assoc},
+    {"dissoc",b_dissoc},
+    {"get",b_get},
+    {"contains?",b_contains},
+    {"keys",b_keys},
+    {"vals",b_vals},
+    {"sequential?",b_is_seq},
     {"print-env",b_print_env},
     {"print-mem",b_print_mem},
     {"gc",b_gc}

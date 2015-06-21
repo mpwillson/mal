@@ -8,6 +8,8 @@
 #include "core.h"
 #include "printer.h"
 
+#define DEBUG 0
+
 struct s_mem {
     int nvars;
     int nelts;
@@ -57,12 +59,6 @@ void env_add(HASH* hash)
     env->next = envs;
     env->env = hash;
     envs = env;
-    /* VAR* var = new_var(),*env_var; */
-
-    /* var->type = S_HASHMAP; */
-    /* var->val.hval = hash; */
-    /* env_var = cons(var,envs); */
-    /* envs = env_var->val.lval; */
     return;
 }
 
@@ -70,7 +66,7 @@ char *strsave(char *s)
 {
 	char *p;
 
-	p = (char *) malloc(strlen(s)+1);
+	p = (char *) mal_malloc(strlen(s)+1);
 	if (p != NULL) 	strcpy(p,s);
 	return p;
 }
@@ -90,12 +86,12 @@ HASH* new_hash(int size)
     SYM** sym;
     int i;
 
-    hash = (HASH*) malloc(sizeof(HASH));
+    hash = (HASH*) mal_malloc(sizeof(HASH));
     if (!hash) mal_die("out of memory in new_hash");
     hash->size = size;
     hash->closure = false;
     hash->outer = NULL;
-    hash->sym = (SYM**) malloc(sizeof(SYM*)*size);
+    hash->sym = (SYM**) mal_malloc(sizeof(SYM*)*size);
     if (!hash->sym) mal_die("out of memory in new_hash (sym)");
     sym = hash->sym;
     for (i=0;i<size;i++) {
@@ -107,7 +103,7 @@ HASH* new_hash(int size)
 LIST* new_elt() {
     LIST* elt;
     
-    elt = (LIST *) malloc(sizeof(LIST));
+    elt = (LIST *) mal_malloc(sizeof(LIST));
     if (elt == NULL) {
         mal_die("out of memory at new_elt.");
     }
@@ -120,14 +116,15 @@ LIST* new_elt() {
 
 LIST* ref_elt(LIST* elt)
 {
-    elt->refs++;
+    if (elt) elt->refs++;
     return elt;
 }
 
 VAR* new_var() {
     VAR* var;
     LIST* elt = new_elt();
-    
+
+    /* if (mem_inuse.nvars > 400) gc(); */
     var = (VAR *) mal_malloc(sizeof(VAR));
     if (var == NULL)  {
         mal_die("out of memory at new_var.");
@@ -179,12 +176,11 @@ void free_elts(LIST* list)
     while (elt) {
         last_elt = elt;
         elt = elt->next;
-        if (last_elt->refs == 1) {
+        if (last_elt->refs <= 1) {
             free(last_elt);
             mem_inuse.nelts--;
         }
         else {
-            printf("elt ref --\n");
             last_elt->refs--;
             return;
         }
@@ -193,7 +189,9 @@ void free_elts(LIST* list)
 
 void free_var(VAR* var)
 {
-    printf("Freeing type: %d; %s\n", var->type,print_str(var,false,true));
+    if (DEBUG) {
+        printf("Freeing type: %d; %s\n", var->type,print_str(var,false,true));
+    }
     switch (var->type) {
         case S_STR:
         case S_SYM:
@@ -255,6 +253,7 @@ void mark_var(VAR* var)
             while ((sp=env_next(iter))) {
                 mark_var(sp->value);
             }
+            free(iter);
             break;
     }
     return;
@@ -298,7 +297,6 @@ void gc(void)
     ep = &envs;
     while (e) {
         if (!walk_env(e->env)) {
-            printf("env freed.\n");
             *ep = e->next;
             free(e);
             e = *ep;
@@ -313,18 +311,21 @@ void gc(void)
     elt = allocated;
     while (elt) {
         if (elt->var->marked) {
-            /* nmarked++; */
-            printf("Marked: [%d] %s\n",nmarked++,print_str(elt->var,false,true));
+            nmarked++;
+            if (DEBUG) {
+                printf("Marked: [%d] %s\n",nmarked,
+                       print_str(elt->var,false,true));
+            }
         }
         else {
-            /* nunmarked++; */
-            printf("Unmarked: [%d] %s\n",nunmarked++,print_str(elt->var,false,true));
+            nunmarked++;
+            if (DEBUG) {
+                printf("Unmarked: [%d] %s\n",nunmarked,print_str(elt->var,false,true));
+            }
         }
         if (elt->var->type == S_UNDEF) nundef++;
         elt = elt->next;
     }
-    printf("VARS marked: %d (undefined: %d)\n",nmarked,nundef);
-    /* if (true) return; */
 
     /* Run through allocated, freeing everything not marked.
      * Update allocated stats.
@@ -335,6 +336,11 @@ void gc(void)
     nunmarked = 0;
     while (elt) {
         if (!elt->var->marked) {
+            if (DEBUG) {
+                printf("Freeing: %s @ x%x -> x%x\n",
+                       print_str(elt->var,true,true),
+                       (unsigned int)elt->var,(unsigned int)elt->var->val.pval);
+            }
             free_var(elt->var);
             *elt_ptr = elt->next;
             free(elt);
@@ -348,6 +354,6 @@ void gc(void)
             nmarked++;
         }
     }
-    printf("Freed: %d; Current: %d\n",nunmarked,nmarked);
+    /* printf("Freed: %d; Current: %d\n",nunmarked,nmarked); */
 
 }
