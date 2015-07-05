@@ -8,7 +8,7 @@
 #include "core.h"
 #include "printer.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 struct s_mem {
     int nvars;
@@ -354,6 +354,6 @@ void gc(void)
             nmarked++;
         }
     }
-    /* printf("Freed: %d; Current: %d\n",nunmarked,nmarked); */
+    if (DEBUG) printf("gc: freed: %d; current: %d\n",nunmarked,nmarked); 
 
 }

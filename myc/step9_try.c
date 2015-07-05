@@ -387,8 +387,8 @@ VAR* do_form(LIST* form,HASH* env)
     
     if (form == NULL) return &var_nil;
     if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
-    eval_ast(but_last(form),env);
     var = last(form);
+    eval_ast(but_last(form),env);
     if (DEBUG) printf("do_form2: %s\n",print_str(var,true,true));
     return var;
 }
@@ -522,7 +522,7 @@ VAR* eval_ast(VAR* ast, HASH* env)
         free(iter);
         return ast;
     }
-    else if (islist(ast->type)) { 
+    else if (islist(ast->type)) {
         elt = ast->val.lval;
         while (elt != NULL) {
             evaled_var = eval(elt->var,env);
@@ -646,7 +646,8 @@ char* rep(char* s,HASH* env)
     current_form = repl_read(s);
     env_put(env,"*0",current_form); /* protect from gc */
     result = eval(current_form,env);
-    env_put(env,"*1",result);
+    env_put(env,"*1",result->val.lval->var); /* remove S_ROOT (is
+                                              * this right?)*/
     output = print(result);
     return output;
 }
