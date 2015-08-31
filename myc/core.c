@@ -660,7 +660,6 @@ VAR* b_throw(LIST* list)
 VAR* b_apply(LIST* list)
 {
     VAR* apply_list, *apply_args;
-    LIST* elt = new_elt();
     
     if (!list) return &var_nil;
     apply_args = but_last(list);
@@ -669,8 +668,8 @@ VAR* b_apply(LIST* list)
         throw(mal_error("apply form must specify list"));
     }
     else {
-        elt->var = list2var(concat(apply_args->val.lval,seq(apply_list)->val.lval));
-        return b_eval(elt);
+        return eval(list2var(concat(apply_args->val.lval,
+                                    seq(apply_list)->val.lval)),ns_get());
     }
     return &var_nil;
 }
@@ -678,8 +677,7 @@ VAR* b_apply(LIST* list)
 VAR* b_map(LIST* list)
 {
     VAR* map_fn;
-    LIST* new_list = NULL, *mapped_list = NULL,
-        *elt, *eval_elt = new_elt();
+    LIST* new_list = NULL, *mapped_list = NULL,*elt;   
 
     if (!list) return &empty_list;
     map_fn = list->var;
@@ -688,8 +686,7 @@ VAR* b_map(LIST* list)
         elt = seq(elt->var)->val.lval;
         while (elt) {
             new_list = append(append(NULL,map_fn),elt->var);
-            eval_elt->var = list2var(new_list);
-            mapped_list = append(mapped_list,b_eval(eval_elt));
+            mapped_list = append(mapped_list,eval(list2var(new_list),ns_get()));
             elt = elt->next;
         }
     }

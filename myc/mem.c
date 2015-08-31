@@ -8,7 +8,7 @@
 #include "core.h"
 #include "printer.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 struct s_mem {
     int nvars;
@@ -300,7 +300,6 @@ void gc(void)
             *ep = e->next;
             free(e);
             e = *ep;
-            mem_inuse.nelts--;
         }
         else {
             ep = &((*ep)->next);
@@ -320,7 +319,8 @@ void gc(void)
         else {
             nunmarked++;
             if (DEBUG) {
-                printf("Unmarked: [%d] %s\n",nunmarked,print_str(elt->var,false,true));
+                printf("Unmarked: [%d] %s\n",
+                       nunmarked,print_str(elt->var,false,true));
             }
         }
         if (elt->var->type == S_UNDEF) nundef++;

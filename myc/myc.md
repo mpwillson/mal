@@ -68,7 +68,9 @@ imagined. Valgrind was invaluable in tracking down all the stupid
 mistakes I made.  gc is moslty clean now, but there are (at least) two
 problems remaining: (1) valgrind reports accessing freed memory when
 gc is run during execution of a function and (2) lost data when using
-try/catch (except I cannot reproduce this presently).
+try/catch (except I cannot reproduce this presently). Later... (2) was
+caused by using throw as the function passed to map.  Map and apply
+functions have been changed to remove the need to create an elt.
 
 For (1), maybe the easiest fix is to only gc at safe points (i.e. in
 between executing functions).  In that case, (gc) would set a gobal

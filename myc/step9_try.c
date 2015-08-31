@@ -16,7 +16,7 @@
     
 #define BUFSIZE 1024
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* Define atoms */
 VAR quote = {
@@ -646,8 +646,7 @@ char* rep(char* s,HASH* env)
     current_form = repl_read(s);
     env_put(env,"*0",current_form); /* protect from gc */
     result = eval(current_form,env);
-    env_put(env,"*1",result->val.lval->var); /* remove S_ROOT (is
-                                              * this right?)*/
+    env_put(env,"*1",result->val.lval->var); /* omit S_ROOT */
     output = print(result);
     return output;
 }
