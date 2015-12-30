@@ -678,8 +678,8 @@ int main(int argc, char* argv[])
                     add_history(bufread);
                     fprintf(stdout,"%s\n",rep(bufread,env));
                 }
+                free(bufread);
             }
-            free(bufread);
         }
         env_free(env);
         fprintf(stdout,"\n");
