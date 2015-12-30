@@ -27,34 +27,31 @@
 #include "printer.h"
 #include "reader.h"
 #include "env.h"
+#include "mem.h"
 
-ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
+HASH* new_env(int size, HASH* outer,VAR* binds, VAR* exprs)
 {
-    ENV* env;
-    int i;
-    SYM** sym;
-    LIST* bind_list, *expr_list;
+    HASH* env;
+    LIST* bind_list = NULL, *expr_list;
     VAR* rest;
-    LIST nil_elt = {&var_nil,NULL};
+    LIST nil_elt = {&var_nil,1,NULL};
 
     /* Initialise new env instance */
-    env = (ENV*) malloc(sizeof(ENV));
-    if (!env) mal_die("out of memory in new_env (env)");
-    env->size = size;
-    env->closure = false;
+    env = new_hash(size);
     env->outer = outer;
-    env->sym = (SYM**) malloc(sizeof(SYM*)*size);
-    if (!env->sym) mal_die("out of memory in new_env (sym)");
-    sym = env->sym;
-    for (i=0;i<size;i++) {
-        *sym++ = NULL;
-    }
+    env_add(env);
     /* Run through binds list. Handle & (all subsequent args are bound
        as a list to the following binds symbol).  Where binds exist
        without an arg, binds are set to nil.
     */
     if (binds != NULL) {
-        bind_list = binds->val.lval;
+        if (binds->type == S_VECTOR || binds->type == S_LIST) {
+            bind_list = seq(binds)->val.lval;
+        }
+        else {
+            throw(mal_error("invalid binding form: %s",
+                            print_str(binds,true,true)));
+        }
         expr_list = (exprs?exprs->val.lval:NULL);
         if (expr_list == NULL) expr_list = &nil_elt;
         while (bind_list != NULL) {
@@ -62,7 +59,7 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
                 bind_list = bind_list->next;
                 rest = new_var();
                 rest->type = S_LIST;
-                rest->val.lval = (expr_list==&nil_elt?NULL:expr_list);
+                rest->val.lval = (expr_list==&nil_elt?NULL:ref_elt(expr_list));
                 env_put(env,bind_list->var->val.pval,rest);
                 return env;
             }
@@ -74,25 +71,51 @@ ENV* new_env(int size, ENV* outer,VAR* binds, VAR* exprs)
     return env;
 }
 
-int hash(ENV* env,char *s)  
+static int hashed(HASH* env,char *s)  
 {
 	int hashval;
-   
+
 	for (hashval=0; *s != '\0'; ) hashval += *s++;
 	return (hashval%(env->size));
 }
 
-SYM *lookup(ENV* env,char *s)
+static SYM *lookup(HASH* env,char *s)
 {
 	SYM *sp;
    
-	for (sp = env->sym[hash(env,s)];sp != NULL; sp = sp->next) {
+	for (sp = env->sym[hashed(env,s)];sp != NULL; sp = sp->next) {
 		if (strcmp(s,sp->name) == 0) return sp;
     }
 	return NULL;
 }
 
-ENV* env_put(ENV* env,char *name,VAR* var)
+HASH* env_del(HASH* env,char *name)
+{
+    SYM* sp, *sp_prev = NULL;
+    int hashval;
+
+    hashval = hashed(env,name);
+    sp = env->sym[hashval];
+    while (sp != NULL) {
+        if (strcmp(name,sp->name) == 0) {
+            if (!sp_prev) {
+                env->sym[hashval] = NULL;
+            }
+            else {
+                sp_prev->next = sp->next;
+            }
+            free(sp);
+            sp = NULL;
+        }
+        else {
+            sp_prev = sp;
+            sp = sp->next;
+        }
+    }
+    return env;
+}
+    
+HASH* env_put(HASH* env,char *name,VAR* var)
 {
 	SYM *sp;
 	int hashval;
@@ -102,7 +125,7 @@ ENV* env_put(ENV* env,char *name,VAR* var)
 		if (sp == NULL) return NULL;
         sp->name = strsave(name);
 		sp->value = var;
-		hashval = hash(env,sp->name);
+		hashval = hashed(env,sp->name);
 		sp->next = env->sym[hashval];
 		env->sym[hashval] = sp;
 	}
@@ -112,7 +135,7 @@ ENV* env_put(ENV* env,char *name,VAR* var)
 	return env;
 }
 
-VAR* env_get(ENV* env,char* name)
+VAR* env_get(HASH* env,char* name)
 {
     SYM* sp;
 
@@ -124,45 +147,20 @@ VAR* env_get(ENV* env,char* name)
     }
     return env_get(env->outer,name);
 }
-    
-void env_dump(ENV* env)
-{
-    SYM* sp;
-    int i;
 
-    for (i=0;i<env->size;i++) {
-        if (env->sym[i] != NULL) {
-            sp = env->sym[i];
-            while (sp != NULL) {
-                printf("[%d] %s: type %d, value: %s\n",
-                       i,sp->name,sp->value->type,
-                       print_str(sp->value,true,true));
-                sp = sp->next;
-            }
-        }
-    }
-    /* if (env->outer != NULL) { */
-    /*     printf("Enclosed by...\n"); */
-    /*     env_dump(env->outer); */
-    /* } */
-}
-
-void env_free(ENV* env)
+void env_free(HASH* env)
 {
     SYM* sp,*last_sp;
     int i;
+    
     if (env->closure) return;
     for (i=0;i<env->size;i++) {
-        if (env->sym[i] != NULL) {
+        if ((sp=env->sym[i])) {
             while (sp != NULL) {
                 sp = env->sym[i];
                 last_sp = sp;
-                /* VARs may be required for results passed back to
-                 * outer environment.  TBD: Handle all this garbage
-                 * that is being created */
-                /* free(sp->name); */
-                /* free_var(sp->value); */
                 sp = sp->next;
+                free(last_sp->name);
                 free(last_sp);
             }
         }
@@ -171,5 +169,58 @@ void env_free(ENV* env)
     free(env);
 }
 
+/* Support for iteration over a hash (including nested hashes).
+ * Initialisation returns an iterator, which is passed to env_next.
+ * env_next returns the next hash value as a SYM*.
+ * Client is responsible for freeing iterator when done.
+ */
+ITER* env_iter_init(HASH* h)
+{
+    ITER* iter;
+
+    iter = (ITER*) malloc(sizeof(ITER));
+    if (iter == NULL) {
+        mal_die("out of memory at env_iter_init");
+    }
+    iter->hash = h;
+    iter->sp = NULL;
+    iter->index = 0;
+    return iter;
+}
+
+SYM* env_next(ITER* iter)
+{
+    if (iter->sp == NULL) {
+        if (iter->index < iter->hash->size) {
+            iter->sp = iter->hash->sym[iter->index];
+            iter->index++;
+            if (!iter->sp) return env_next(iter);
+        }
+        else {
+            return NULL;
+        }
+    }
+    else {
+        iter->sp = iter->sp->next;
+        if (!iter->sp) return env_next(iter);
+    }
+    return iter->sp;
+}
+
+/* Example of hash iterator usage */
+void env_dump(HASH* env)
+{
+    SYM* sp;
+    ITER* iter;
     
+    iter = env_iter_init(env);
+    while ((sp = env_next(iter)) != NULL) {
+        printf("%-24s%s\n",
+               sp->name,print_str(sp->value,true,true));
+    }
+    free(iter);
+}
+
+        
             
+    

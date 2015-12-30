@@ -170,7 +170,7 @@ FN* new_fn()
  * as a do form.
  * TDB Add error checking.
  */
-VAR* make_fn(LIST* list,ENV *env)
+VAR* make_fn(LIST* list,HASH *env)
 {
     FN* fn = new_fn();
     VAR* fn_var = new_var();
@@ -185,10 +185,10 @@ VAR* make_fn(LIST* list,ENV *env)
 }
 
 /* forward declare of eval */
-VAR* eval(VAR*,ENV*);
-VAR* eval_ast(VAR*,ENV*);
+VAR* eval(VAR*,HASH*);
+VAR* eval_ast(VAR*,HASH*);
 
-VAR* do_form(LIST* form,ENV* env)
+VAR* do_form(LIST* form,HASH* env)
 {
     LIST* elt, *new_list = NULL;
     VAR* result;
@@ -208,7 +208,7 @@ VAR* do_form(LIST* form,ENV* env)
     return elt->var;
 }
 
-VAR* def_form(LIST* elt,ENV* env)
+VAR* def_form(LIST* elt,HASH* env)
 {
     VAR* evaled;
 
@@ -218,9 +218,9 @@ VAR* def_form(LIST* elt,ENV* env)
     return evaled;
 }
 
-ENV* let_env(LIST* elt,ENV *env)
+HASH* let_env(LIST* elt,HASH *env)
 {
-    ENV* new;
+    HASH* new;
     VAR* eval_list = &var_nil;
     LIST* env_elt;
 
@@ -241,7 +241,7 @@ ENV* let_env(LIST* elt,ENV *env)
     return new;
 }
 
-VAR* if_form(LIST* elt, ENV* env)
+VAR* if_form(LIST* elt, HASH* env)
 {
     VAR* eval_list;
     
@@ -324,7 +324,7 @@ VAR* handle_quasiquote(VAR* ast)
     return var;
 }
 
-VAR* eval_ast(VAR* ast, ENV* env)
+VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
     VAR* list_var = new_var();
@@ -359,7 +359,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
     return ast;
 }
     
-VAR* eval(VAR* ast,ENV* env)
+VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt,*env_elt;
@@ -447,7 +447,7 @@ char* print(VAR* var)
     return print_str(var,true,true);
 }
      
-char* rep(char* s,ENV* env)
+char* rep(char* s,HASH* env)
 {
     char* output;
 
@@ -455,7 +455,7 @@ char* rep(char* s,ENV* env)
     return output;
 }
 
-int execute_program(char* filename,int nargs,char* argv[],ENV* env)
+int execute_program(char* filename,int nargs,char* argv[],HASH* env)
 {
     char cmd[BUFSIZE+1];
     LIST* list = NULL;
@@ -478,7 +478,7 @@ int main(int argc, char* argv[])
 {
     char* bufread;
     bool at_eof = false;
-    ENV* env = ns_get();
+    HASH* env = ns_get();
 
     /* define mal functions */
     rep("(def! not (fn* [x] (if x false true)))",env);

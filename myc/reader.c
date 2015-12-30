@@ -24,9 +24,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "mal.h"
 #include "reader.h"
+#include "env.h"
+#include "mem.h"
 
 /* GLOBALS */
 
@@ -69,11 +72,28 @@ int lexer(void)
 {
 	char ch = ' ';
 	int i = 0, lexsym;
-
+    bool minus;
+    
+    minus = false;
 	lextok[0] = '\0';
-	while (ch == ' ' || ch == ',' || ch == '\t' || ch == '\n') ch = getlexchar();
+	while (ch == ' ' || ch == ',' || ch == '\t' || ch == '\n') {
+        ch = getlexchar();
+    }
+
+    /* check for negative number */
+    if (ch == '-') {
+        ch = getlexchar();
+        if (isdigit(ch) || ch == '.') {
+            minus = true;
+        }
+        else {
+            ungetlexchar(ch);
+            ch = '-';
+        }
+    }
 	if (isdigit(ch)) {
 		lexsym = S_INT;
+        if (minus) lextok[i++] = '-';
 		while ((isdigit(ch) || ch == '.') && i < LEXTOKSIZ) {
 			lextok[i++] = ch;
 			ch = getlexchar();
@@ -214,7 +234,6 @@ char* list_close(int type)
             return "}";
     }
     return "";
-    
 }
 
 /* Return atom, created from type and value */
@@ -233,19 +252,16 @@ VAR* read_atom(int type,char *s)
             new->type = type;
             new->val.rval = strtod(s,NULL);
             break;
-        case S_SYM:
-        case S_STR:
-        case S_KEYWORD:
-            new = new_var();
-            new->type = type;
-            new->val.pval = strsave(s);
-            break;
         case S_NIL:
             return &var_nil;
         case S_TRUE:
             return &var_true;
         case S_FALSE:
             return &var_false;
+        default:
+            new = new_var();
+            new->type = type;
+            new->val.pval = strsave(s);
     }   
     return new;
 }
@@ -273,12 +289,7 @@ VAR* handle_quote(int token_type)
             break;
     }
     form = read_form(lexer());
-    if (form->type == S_ERROR) {
-        return form;
-    }
-    else {
-        return list2var(append(append(NULL,quote_type),form));
-    }
+    return list2var(append(append(NULL,quote_type),form));
 }
 
 VAR* handle_meta()
@@ -287,8 +298,6 @@ VAR* handle_meta()
     VAR* object_form = read_form(lexer());
     LIST* new = NULL;
 
-    if (meta_form->type == S_ERROR) return meta_form;
-    if (object_form->type == S_ERROR) return object_form;
     new = append(new,&meta);
     new = append(new,object_form);
     new = append(new,meta_form);
@@ -307,23 +316,30 @@ VAR* read_list(int type,char close)
         if (var->type != S_COMMENT) list = append(list,var);
         token_type = lexer();
     }
-    var = new_var();
     if (type != S_ROOT && token_type != close) {
-        /* var->type = S_ERROR; */
         throw(mal_error("terminating list character '%c' expected",close));
     }
-    else {
-        var->type = type;
-        var->val.lval = list;
+    var = new_var();
+    if (type == S_VECTOR) {
+        var->val.vval = mkvector(list);
+        free_elts(list);
     }
+    else if (type == S_HASHMAP) {
+        var->val.hval = mkhashmap(list);
+        free_elts(list);
+        if (!var->val.hval) throw(mal_error("odd number of forms for hashmap"));
+    }
+    else {
+        var->val.lval = ref_elt(list);
+    }
+    var->type = type;
     return var;
 }
 
 VAR* read_form(int token_type)
 {
-    VAR* var;
+    VAR* var = NULL;
 
-    var = new_var();
     switch (token_type) {
         case '(':
             var = read_list(S_LIST,')');
@@ -345,11 +361,10 @@ VAR* read_form(int token_type)
             var = handle_meta();
             break;
         case S_USTR:
-            var->type = S_ERROR;
             throw(mal_error("unterminated string"));
             break;
         case S_COMMENT:
-            //var = read_form(lexer());
+            var = new_var();
             var->type = S_COMMENT;
             var->val.pval = strsave(lextok);
             break;

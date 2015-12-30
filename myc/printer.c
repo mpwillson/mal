@@ -26,8 +26,10 @@
 #include "mal.h"
 #include "reader.h"
 #include "printer.h"
+#include "env.h"
 
-#define INITIAL_BUFSIZE 1024
+// FIXME: buffer overruns when printing large lists/functions/vectors/hashes 
+#define INITIAL_BUFSIZE 4096
 
 static char* buffer = NULL;
 static int buffer_size = INITIAL_BUFSIZE;
@@ -59,7 +61,9 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
 {
     LIST* elt;
     char tok[INITIAL_BUFSIZE];
-    int len, buffer_len;
+    int len, buffer_len,i;
+    SYM* sp;
+    ITER* iter;
 
     if (buffer == NULL) {
         buffer = (char *) malloc(INITIAL_BUFSIZE);
@@ -76,9 +80,33 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             if (var->val.lval)
                 print_str(var->val.lval->var,print_readably,true);
             return buffer;
-        case S_LIST:
         case S_VECTOR:
+            strcat(buffer,list_open(S_VECTOR));
+            if (var->val.vval->size == 0) strcat(buffer," ");
+            for (i=0;i<var->val.vval->size;i++) {
+                print_str(var->val.vval->vector[i],print_readably,false);
+                strcat(buffer," ");
+            }
+            buffer[strlen(buffer)-1] = '\0'; /* remove trailing space */
+            strcat(buffer,list_close(S_VECTOR));
+            return buffer;
         case S_HASHMAP:
+            strcat(buffer,list_open(S_HASHMAP));
+            iter = env_iter_init(var->val.hval);
+            sp = env_next(iter);
+            if (!sp) strcat(buffer," ");
+            while (sp) {
+                print_str(str2var(sp->name),true,false);
+                strcat(buffer," ");
+                print_str(sp->value,true,false);
+                strcat(buffer," ");
+                sp = env_next(iter);
+            }
+            buffer[strlen(buffer)-1] = '\0'; /* remove trailing space */
+            strcat(buffer,list_close(S_HASHMAP));
+            free(iter);
+            return buffer;           
+        case S_LIST:
             elt = var->val.lval;
             strcat(buffer,list_open(var->type));
             if (elt == NULL) strcat(buffer, " ");
@@ -140,6 +168,10 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             break;
         case S_ERROR:
             sprintf(tok,"error: %s.",var->val.pval);
+            if (print_readably) {
+                stringify(tok);
+                return buffer;
+            }
             break;
         default:
             sprintf(tok,"mal: unhandled type: %d",var->type);

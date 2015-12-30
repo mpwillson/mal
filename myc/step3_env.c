@@ -144,11 +144,11 @@ VAR* read(char* s)
 }
 
 /* forward declare of eval for eval_ast */
-VAR* eval(VAR*,ENV*);
+VAR* eval(VAR*,HASH*);
 
 /* TDB: Fix memory leaks */
 
-VAR* eval_ast(VAR* ast, ENV* env)
+VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
     VAR* list_var = new_var();
@@ -182,12 +182,12 @@ VAR* eval_ast(VAR* ast, ENV* env)
     return ast;
 }
 
-VAR* eval(VAR* ast,ENV* env)
+VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt,*env_elt;
     VAR* result = new_var();
-    ENV* new;
+    HASH* new;
 
     if (ast->type == S_LIST) {
         elt = ast->val.lval;
@@ -258,7 +258,7 @@ VAR arith_op[] =
     {S_SYM,var_div,"/"},
 };
         
-char* rep(char* s,ENV* env)
+char* rep(char* s,HASH* env)
 {
     char* output;
 
@@ -271,7 +271,7 @@ int main(void)
     char buf[BUFSIZE+1];
     char* bufread;
     bool at_eof = false;
-    ENV* env = new_env(101,NULL);
+    HASH* env = new_env(101,NULL);
     int i;
     VAR* var;
     

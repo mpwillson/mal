@@ -215,7 +215,7 @@ VAR* rest(VAR* var)
  * Remaining elements are the body of the function, wrapped in a do
  * form.
  */
-VAR* fn_form(LIST* list,ENV *env,int type)
+VAR* fn_form(LIST* list,HASH *env,int type)
 {
     static VAR do_atom = {S_SYM,{"do"}};
     FN* fn = new_fn();
@@ -233,7 +233,7 @@ VAR* fn_form(LIST* list,ENV *env,int type)
     return &var_nil;
 }
 
-FN* is_macro_call(VAR* ast,ENV* env)
+FN* is_macro_call(VAR* ast,HASH* env)
 {
     VAR* var;
     
@@ -252,7 +252,7 @@ FN* is_macro_call(VAR* ast,ENV* env)
 #define MAL_MACRO 1
 
 #if MAL_MACRO == 1
-VAR* defmacro_form(LIST* list,ENV *env)
+VAR* defmacro_form(LIST* list,HASH *env)
 {
     VAR* macro_var = &var_nil, *macro_body;
     VAR* name;
@@ -270,7 +270,7 @@ VAR* defmacro_form(LIST* list,ENV *env)
 
 #else
 /* Macros with arguments (defmacro! m [x y] (forms)) */
-VAR* defmacro_form(LIST* list,ENV *env)
+VAR* defmacro_form(LIST* list,HASH *env)
 {
     VAR* macro_var = &var_nil;
     VAR* name;
@@ -286,7 +286,7 @@ VAR* defmacro_form(LIST* list,ENV *env)
 }
 #endif
 
-VAR* macroexpand(VAR* ast, ENV* env)
+VAR* macroexpand(VAR* ast, HASH* env)
 {
     FN* macro;
 
@@ -297,7 +297,7 @@ VAR* macroexpand(VAR* ast, ENV* env)
     return ast;
 }
       
-VAR* do_form(LIST* form,ENV* env)
+VAR* do_form(LIST* form,HASH* env)
 {
     LIST* elt, *new_list = NULL;
     
@@ -316,7 +316,7 @@ VAR* do_form(LIST* form,ENV* env)
     return elt->var;
 }
 
-VAR* def_form(LIST* elt,ENV* env)
+VAR* def_form(LIST* elt,HASH* env)
 {
     VAR* evaled;
 
@@ -326,9 +326,9 @@ VAR* def_form(LIST* elt,ENV* env)
     return evaled;
 }
 
-ENV* let_env(LIST* elt,ENV *env)
+HASH* let_env(LIST* elt,HASH *env)
 {
-    ENV* new;
+    HASH* new;
     VAR* eval_list = &var_nil;
     LIST* env_elt;
 
@@ -349,7 +349,7 @@ ENV* let_env(LIST* elt,ENV *env)
     return new;
 }
 
-VAR* if_form(LIST* elt, ENV* env)
+VAR* if_form(LIST* elt, HASH* env)
 {
     VAR* eval_list;
     
@@ -414,7 +414,7 @@ VAR* handle_quasiquote(VAR* ast)
     return var;
 }
 
-VAR* eval_ast(VAR* ast, ENV* env)
+VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
     VAR* list_var = new_var();
@@ -449,7 +449,7 @@ VAR* eval_ast(VAR* ast, ENV* env)
     return ast;
 }
     
-VAR* eval(VAR* ast,ENV* env)
+VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt;
@@ -547,7 +547,7 @@ char* print(VAR* var)
     return print_str(var,true,true);
 }
      
-char* rep(char* s,ENV* env)
+char* rep(char* s,HASH* env)
 {
     char* output;
 
@@ -555,7 +555,7 @@ char* rep(char* s,ENV* env)
     return output;
 }
 
-int execute_program(char* filename,int nargs,char* argv[],ENV* env)
+int execute_program(char* filename,int nargs,char* argv[],HASH* env)
 {
     char cmd[BUFSIZE+1];
     LIST* list = NULL;
@@ -578,7 +578,7 @@ int main(int argc, char* argv[])
 {
     char* bufread;
     bool at_eof = false;
-    ENV* env = ns_get();
+    HASH* env = ns_get();
 
     /* define mal functions and macros */
     rep("(def! not (fn* [x] (if x false true)))",env);

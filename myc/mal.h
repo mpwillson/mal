@@ -30,19 +30,20 @@
 #define S_COMMENT 24
 #define S_MACRO 25
 
-#define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR || \
-                      t == S_HASHMAP)
+#define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR)/* ||    \
+                        t == S_HASHMAP) */
 #define isstr(t) (t == S_STR || t == S_SYM || t == S_KEYWORD)
 
 /* Forward references */
 struct s_list;
 struct s_var;
 struct s_fn;
-struct s_env;
+struct s_hash;
 
 typedef struct s_var VAR;
 typedef struct s_list LIST;
 typedef struct s_fn FN;
+typedef struct s_vec VEC;
 
 /* declaration for internal functions that do stuff to LIST */
 typedef VAR*(*BUILTIN)(LIST*);
@@ -54,24 +55,35 @@ union u_val {
     FN* fval;
     LIST* lval;
     BUILTIN bval;
+    VEC* vval;
+    struct s_hash* hval;
+    
 };
 
 struct s_var {
 	int type;
 	union u_val val;
+    bool marked;
 };
 
 struct s_list {
     VAR *var;
+    int refs;
     struct s_list *next;
 };
 
 struct s_fn {
     VAR* args;
     VAR* forms;
-    struct s_env *env;
+    struct s_hash *env;
 };
 
+struct s_vec {
+    int size;
+    VAR** vector;
+};
+
+    
 /* Declarations for pre-defined atoms */
 extern VAR quote;
 extern VAR quasiquote;
@@ -88,19 +100,20 @@ extern VAR empty_list;
 /* function prototypes */
 VAR* mal_error(const char *fmt, ...);
 void mal_die(char*);
-void free_var(VAR*);
-void free_list(LIST*);
-LIST* new_elt(void);
-VAR* new_var(void);
 LIST* append(LIST*,VAR*);
-char* strsave(char*);
 VAR* list2var(LIST*);
 VAR* repl_read(char *);
-VAR* eval(VAR*,struct s_env *);
-VAR* eval_ast(VAR*,struct s_env *);
+VAR* eval(VAR*,struct s_hash *);
+VAR* eval_ast(VAR*,struct s_hash *);
 VAR* first(VAR*);
 VAR* second(VAR*);
 VAR* rest(VAR*);
+VAR* but_last(LIST*);
+VAR* last(LIST*);
 void throw(VAR*);
+VEC* mkvector(LIST*);
+VAR* seq(VAR*);
+struct s_hash* mkhashmap(LIST*);
+VAR* str2var(char*);
 
 #endif

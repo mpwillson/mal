@@ -12,10 +12,11 @@
 #include "printer.h"
 #include "env.h"
 #include "core.h"
+#include "mem.h"
     
 #define BUFSIZE 1024
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* Define atoms */
 VAR quote = {
@@ -59,7 +60,7 @@ jmp_buf jmp_env;
 void mal_die(char* msg)
 {
     fprintf(stderr,"mal: FATAL: %s\n",msg);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 VAR* mal_error(const char *fmt, ...)
@@ -81,75 +82,74 @@ void throw(VAR* thrown)
     return;
 }
 
-char *strsave(char *s)
+
+VEC* mkvector(LIST* list)
 {
-	char *p;
-
-	p = (char *) malloc(strlen(s)+1);
-	if (p != NULL) 	strcpy(p,s);
-	return p;
-}
-
-LIST* new_elt() {
+    VEC* vec;
+    VAR** v;
     LIST* elt;
-    
-    elt = (LIST *) malloc(sizeof(LIST));
-    if (elt == NULL) {
-        mal_die("out of memory at new_elt.");
+    int size;
+
+    size = count(list);
+    vec = new_vec(size);
+    elt = list;
+    v = vec->vector;
+    while (elt) {
+        *v++ = elt->var;
+        elt = elt->next;
     }
-    elt->var = NULL;
-    elt->next = NULL;
-    return elt;
+    return vec;
 }
 
-VAR* new_var() {
-    VAR* var;
-    
-    var = (VAR *) malloc(sizeof(VAR));
-    if (var == NULL)  {
-        mal_die("out of memory at new_var.");
-    }
-    var->type = S_UNDEF;
-    var->val.lval = NULL;
-    return var;
-}
-      
-FN* new_fn()
+HASH* mkhashmap(LIST* list)
 {
-    FN* fn;
+    HASH* hash;
+    LIST* elt;
+    int size;
 
-    fn = (FN*) malloc(sizeof(FN));
-    if (fn == NULL) {
-        mal_die("out of memory at new_fn");
+    size = count(list);
+    if (size%2 == 1) return NULL;
+    hash = new_hash(37);
+    elt = list;
+    while (elt) {
+        env_put(hash,print_str(elt->var,false,true),elt->next->var);
+        elt = elt->next->next;
     }
-    fn->args = NULL;
-    fn->forms = NULL;
-    fn->env = NULL;
-    return fn;
+    return hash;
 }
 
-void free_var(VAR* var)
+/* Return list-like object (vector, hash) as a list (sequence) */
+VAR* seq(VAR* var)
 {
-    if (isstr(var->type)) {
-        free(var->val.pval);
+    LIST* list = NULL;
+    VEC* vec;
+    VAR* seq_var;
+    HASH* hash;
+    ITER* iter;
+    SYM* sp;
+    int i;
+
+    if (var->type == S_VECTOR) {
+        vec = var->val.vval;
+        for (i=0;i<vec->size;i++) {
+            list = append(list,vec->vector[i]);
+        }
+        return list2var(list);
+    }
+    else if (var->type == S_HASHMAP) {
+        hash = var->val.hval;
+        iter = env_iter_init(hash);
+        while ((sp = env_next(iter)) != NULL) {
+            seq_var = str2var(sp->name);
+            list = append(append(list,seq_var),sp->value);
+        }
+        free(iter);
+        return list2var(list);
     }
     else if (islist(var->type)) {
-        free_list(var->val.lval);
+        return var;
     }
-    free(var);
-}
-
-void free_list(LIST* list)
-{
-    LIST* elt, *last_elt;
-
-    elt = list;
-    while (elt != NULL) {
-        last_elt = elt;
-        free_var(elt->var);
-        elt = elt->next;
-        free(last_elt);
-    }
+    return &var_nil;
 }
 
 VAR* but_last(LIST* list)
@@ -177,12 +177,21 @@ VAR* last(LIST* list)
     return elt->var;
 }    
 
+VAR* str2var(char* s)
+{
+    VAR* var = new_var();
+    
+    var->type = (s[0] == ':'?S_KEYWORD:S_STR);
+    var->val.pval = strsave((var->type==S_STR?s:s+1));
+    return var;
+}
+
 VAR* list2var(LIST* list)
 {
     VAR* var = new_var();
 
     var->type = S_LIST;
-    var->val.lval = list;
+    var->val.lval = ref_elt(list); 
     return var;
 }
 
@@ -198,27 +207,43 @@ LIST* append(LIST* list,VAR* var)
     else {
         current = list;
         while (current->next != NULL) current = current->next;
-        current->next = elt;
+        current->next = ref_elt(elt);
     }
     return list;
 }
 
 bool is_pair(VAR* var)
 {
-    return (islist(var->type) && var->val.lval);
+    if (var->type == S_VECTOR )
+        return var->val.vval->size>0;
+    else {
+        return (islist(var->type) && var->val.lval);
+    }
 }
 
 VAR* first(VAR* var)
 {
-    if (is_pair(var))
-        return var->val.lval->var;
+    if (is_pair(var)) {
+        if (var->type == S_VECTOR) {
+            return var->val.vval->vector[0];
+        }
+        else {
+            return var->val.lval->var;
+        }
+    }
     return NULL;
 }
 
 VAR* second(VAR* var)
 {
-    if (is_pair(var) && var->val.lval->next)
-        return var->val.lval->next->var;
+    if (is_pair(var)) {
+        if (var->type == S_VECTOR) {
+            return (var->val.vval->size>1?var->val.vval->vector[0]:&var_nil);
+        }
+        else if (var->val.lval->next) {            
+            return var->val.lval->next->var;
+        }
+    }
     return NULL;
 }
 
@@ -226,15 +251,16 @@ VAR* rest(VAR* var)
 {
     VAR* rest_var = NULL;
 
-    if (is_pair(var) && var->val.lval->next) {
-        rest_var = new_var();
-        rest_var->type = S_LIST;
-        rest_var->val.lval = var->val.lval->next;
+    if (is_pair(var)) {
+        var = seq(var);
+        if (var->val.lval->next) {
+            rest_var = list2var(var->val.lval->next);
+        }
     }
     return rest_var;
 }
 
-VAR* try_catch_form(LIST* list, ENV* env)
+VAR* try_catch_form(LIST* list, HASH* env)
 {
     VAR *try_form, *catch_form, *catch_var, *v, *ast = &var_nil;
     jmp_buf jmp_env_save;
@@ -273,24 +299,25 @@ VAR* try_catch_form(LIST* list, ENV* env)
  * Remaining elements are the body of the function, wrapped in a do
  * form.
  */
-VAR* fn_form(LIST* list,ENV *env,int type)
+VAR* fn_form(LIST* list,HASH *env,int type)
 {
-    FN* fn = new_fn();
-    VAR* fn_var = new_var();
+    FN* fn;
+    VAR* fn_var = &var_nil;
 
     if (list) {
+        fn = new_fn();
+        fn_var = new_var();
         fn->args = list->var;
-        fn->forms = cons(&do_var,list->next);
+        fn->forms = cons(&do_var,ref_elt(list->next));
         env->closure = true;
         fn->env = env;
         fn_var->type = type;
         fn_var->val.fval = fn;
-        return fn_var;
     }
-    return &var_nil;
+    return fn_var;
 }
 
-FN* is_macro_call(VAR* ast,ENV* env)
+FN* is_macro_call(VAR* ast,HASH* env)
 {
     VAR* var;
     
@@ -309,7 +336,7 @@ FN* is_macro_call(VAR* ast,ENV* env)
 #define MAL_MACRO 1
 
 #if MAL_MACRO == 1
-VAR* defmacro_form(LIST* list,ENV *env)
+VAR* defmacro_form(LIST* list,HASH *env)
 {
     VAR* macro_var = &var_nil, *macro_body;
     VAR* name;
@@ -327,7 +354,7 @@ VAR* defmacro_form(LIST* list,ENV *env)
 
 #else
 /* Macros with arguments (defmacro! m [x y] (forms)) */
-VAR* defmacro_form(LIST* list,ENV *env)
+VAR* defmacro_form(LIST* list,HASH *env)
 {
     VAR* macro_var = &var_nil;
     VAR* name;
@@ -343,7 +370,7 @@ VAR* defmacro_form(LIST* list,ENV *env)
 }
 #endif
 
-VAR* macroexpand(VAR* ast, ENV* env)
+VAR* macroexpand(VAR* ast, HASH* env)
 {
     FN* macro;
 
@@ -354,19 +381,19 @@ VAR* macroexpand(VAR* ast, ENV* env)
     return ast;
 }
       
-VAR* do_form(LIST* form,ENV* env)
+VAR* do_form(LIST* form,HASH* env)
 {
     VAR* var;
     
     if (form == NULL) return &var_nil;
     if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
-    eval_ast(but_last(form),env);
     var = last(form);
+    eval_ast(but_last(form),env);
     if (DEBUG) printf("do_form2: %s\n",print_str(var,true,true));
     return var;
 }
 
-VAR* def_form(LIST* elt,ENV* env)
+VAR* def_form(LIST* elt,HASH* env)
 {
     VAR* evaled;
 
@@ -376,19 +403,18 @@ VAR* def_form(LIST* elt,ENV* env)
     return evaled;
 }
 
-ENV* let_env(LIST* elt,ENV *env)
+HASH* let_env(LIST* elt,HASH *env)
 {
-    ENV* new;
+    HASH* new;
     VAR* eval_list = &var_nil;
     LIST* env_elt;
 
     if (elt == NULL) return NULL;
     new = new_env(101,env,NULL,NULL);
     if (elt->var->type == S_LIST || elt->var->type == S_VECTOR) {
-        env_elt = elt->var->val.lval;
+        env_elt = seq(elt->var)->val.lval;
         while (env_elt != NULL) {
             if (env_elt->next == NULL) {
-                free(env);
                 return NULL;
             }
             eval_list = eval(env_elt->next->var,new);
@@ -399,7 +425,7 @@ ENV* let_env(LIST* elt,ENV *env)
     return new;
 }
 
-VAR* if_form(LIST* elt, ENV* env)
+VAR* if_form(LIST* elt, HASH* env)
 {
     VAR* eval_list;
     
@@ -448,12 +474,11 @@ VAR* handle_quasiquote(VAR* ast)
         var = handle_quasiquote(first(ast));
         operator = &cons;
     }
-    elt = ast->val.lval->next; /* remainder of ast */
+    elt = seq(ast)->val.lval->next; /* remainder of ast */
     if (DEBUG && elt) printf("qq: recursive arg: %s\n",
                              print_str(list2var(elt),true,true));
     if (elt) {
-        new_list = append(new_list,handle_quasiquote(list2var(elt)));
-        rest = new_list->var;
+        rest = handle_quasiquote(list2var(elt));
     }
     else {
         rest = list2var(NULL);
@@ -464,38 +489,55 @@ VAR* handle_quasiquote(VAR* ast)
     return var;
 }
 
-VAR* eval_ast(VAR* ast, ENV* env)
+VAR* eval_ast(VAR* ast, HASH* env)
 {
     VAR* var, *evaled_var;
-    VAR* list_var = new_var();
+    VAR* list_var;
     LIST* list = NULL;
     LIST* elt;
+    VEC* vec;
+    HASH* hash;
+    ITER* iter;
+    SYM* sp;
+    int i;
 
     if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
     if (ast->type == S_SYM) {
         var = env_get(env,ast->val.pval);
-        if (var == NULL) {
-            // error.val.pval =
-            throw(mal_error("'%s' not found",ast->val.pval));
-            return &error;
-        }
-        return var;
+        return (var?var:ast); /* symbol stands for itself if not bound */
     }
-    else if (islist(ast->type)) { 
+    else if (ast->type == S_VECTOR) {
+        vec = ast->val.vval;
+        for (i=0;i<vec->size;i++) {
+            vec->vector[i] = eval(vec->vector[i],env);
+        }
+        return ast;
+    }
+    else if (ast->type == S_HASHMAP) {
+        hash = ast->val.hval;
+        iter = env_iter_init(hash);
+        while ((sp = env_next(iter)) != NULL) {
+            sp->value = eval(sp->value,env);
+        }
+        free(iter);
+        return ast;
+    }
+    else if (islist(ast->type)) {
         elt = ast->val.lval;
         while (elt != NULL) {
             evaled_var = eval(elt->var,env);
             list = append(list,evaled_var);
             elt = elt->next;
         }
+        list_var = new_var();
         list_var->type = ast->type;
-        list_var->val.lval = list;
+        list_var->val.lval = ref_elt(list);
         return list_var;
     }
     return ast;
 }
     
-VAR* eval(VAR* ast,ENV* env)
+VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt;
@@ -567,7 +609,7 @@ VAR* eval(VAR* ast,ENV* env)
                     ast = fn->forms;
                 }
                 else {
-                    throw(mal_error("'%s' not callable",
+                    throw(mal_error("'%s' not found",
                                     print_str(elt->var,true,true)));
                     return &error;
                 }
@@ -596,15 +638,20 @@ char* print(VAR* var)
     return print_str(var,true,true);
 }
      
-char* rep(char* s,ENV* env)
+char* rep(char* s,HASH* env)
 {
     char* output;
-
-    output = print(eval(repl_read(s),env));
+    VAR* current_form,*result;
+    
+    current_form = repl_read(s);
+    env_put(env,"*0",current_form); /* protect from gc */
+    result = eval(current_form,env);
+    env_put(env,"*1",result->val.lval->var); /* omit S_ROOT */
+    output = print(result);
     return output;
 }
 
-int execute_program(char* filename,int nargs,char* argv[],ENV* env)
+int execute_program(char* filename,int nargs,char* argv[],HASH* env)
 {
     char cmd[BUFSIZE+1];
     LIST* list = NULL;
@@ -623,7 +670,7 @@ int execute_program(char* filename,int nargs,char* argv[],ENV* env)
         rep(cmd,env);
     }
     else {
-        fprintf(stderr,"%s\n",print_str(&error,true,true));
+        fprintf(stderr,"%s\n",print_str(&error,false,true));
     }
     return 0;
 }
@@ -632,7 +679,7 @@ int main(int argc, char* argv[])
 {
     char* bufread;
     bool at_eof = false;
-    ENV* env = ns_get();
+    HASH* env = ns_get();
 
     /* define mal functions and macros */
     rep("(def! not (fn* [x] (if x false true)))",env);
@@ -667,7 +714,7 @@ int main(int argc, char* argv[])
     }
     else {
         if (setjmp(jmp_env) != 0) {
-            fprintf(stderr,"%s\n",print_str(thrown_var,true,true));
+            fprintf(stderr,"%s\n",print_str(thrown_var,false,true));
             if (bufread) free(bufread);
         }
         while (!at_eof) {
@@ -681,7 +728,6 @@ int main(int argc, char* argv[])
                 free(bufread);
             }
         }
-        env_free(env);
         fprintf(stdout,"\n");
     }
     return EXIT_SUCCESS;
