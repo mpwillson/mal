@@ -27,7 +27,8 @@ typedef struct s_envlist ENVLIST;
 static MEM mem_inuse = {0,0,0,0};
 static LIST* allocated = NULL;
 static ENVLIST* envs = NULL;
-
+static LIST* active_vars = NULL; /* For VARs that are active, but not
+                                  * part of an env */
 
 void print_mem(void)
 {
@@ -168,6 +169,23 @@ VEC* new_vec(int size)
     return vec;
 }
 
+void add_active(VAR* var)
+{
+    LIST* elt = new_elt();
+
+    elt->var = var;
+    elt->next = active_vars;
+    active_vars = elt;
+}
+
+void del_active(int n)
+{
+    while (n--) {
+        active_vars = active_vars->next;
+    }
+    return;
+}
+
 void free_elts(LIST* list)
 {
     LIST* elt, *last_elt;
@@ -227,6 +245,8 @@ void mark_var(VAR* var)
     ITER* iter;
     SYM* sp;
     int i;
+
+    if (var->marked) return; /* been here before */
     
     var->marked = true;
     switch (var->type) {
@@ -288,6 +308,12 @@ void gc(void)
     elt = allocated;
     while (elt) {
         elt->var->marked = false;
+        elt = elt->next;
+    }
+    /* Mark active vars */
+    elt = active_vars;
+    while (elt) {
+        mark_var(elt->var);
         elt = elt->next;
     }
     /* Run through envs. For envs that are "closures", mark all VARs

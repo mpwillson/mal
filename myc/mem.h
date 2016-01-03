@@ -15,5 +15,7 @@ HASH* new_hash(int);
 void gc(void);
 void* mal_malloc(size_t);
 LIST* ref_elt(LIST*);
+void add_active(VAR*);
+void del_active(int);
 
 #endif
