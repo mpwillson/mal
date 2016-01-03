@@ -16,7 +16,7 @@
     
 #define BUFSIZE 1024
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* Define atoms */
 VAR quote = {
@@ -504,7 +504,10 @@ VAR* eval_ast(VAR* ast, HASH* env)
     if (DEBUG) printf("eval_ast: ast: %s\n",print_str(ast,true,true));
     if (ast->type == S_SYM) {
         var = env_get(env,ast->val.pval);
-        return (var?var:ast); /* symbol stands for itself if not bound */
+        if (!var) {
+            throw(mal_error("'%s' not found",print_str(ast,true,true)));
+        }
+        return var;
     }
     else if (ast->type == S_VECTOR) {
         vec = ast->val.vval;
@@ -629,7 +632,7 @@ VAR* repl_read(char* s)
     VAR *var;
     
     init_lexer(s);
-    var = read_list(S_ROOT,')');
+    var = read_form(lexer()); /* no need for read_list(S_ROOT,')'); */
     return var;
 }
 
@@ -646,7 +649,7 @@ char* rep(char* s,HASH* env)
     current_form = repl_read(s);
     env_put(env,"*0",current_form); /* protect from gc */
     result = eval(current_form,env);
-    env_put(env,"*1",result->val.lval->var); /* omit S_ROOT */
+    env_put(env,"*1",result);    
     output = print(result);
     return output;
 }
