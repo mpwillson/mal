@@ -659,17 +659,36 @@ VAR* b_throw(LIST* list)
 
 VAR* b_apply(LIST* list)
 {
-    VAR* apply_list, *apply_args;
+    VAR* apply_seq, *apply_args, *apply_fn;
+    FN* fn;
+    LIST* apply_list;
     
     if (!list) return &var_nil;
+    apply_fn = list->var;
+    list = list->next;
     apply_args = but_last(list);
-    apply_list = last(list);
-    if (!islist(apply_list->type)) {
-        throw(mal_error("apply form must specify list"));
+    apply_seq = last(list);
+    if (!islist(apply_seq->type)) {
+        throw(mal_error("apply form must specify seq"));
     }
     else {
-        return eval(list2var(concat(apply_args->val.lval,
-                                    seq(apply_list)->val.lval)),ns_get());
+        if (apply_args->val.lval) {
+            apply_list = concat(apply_args->val.lval,seq(apply_seq)->val.lval);
+        }
+        else {
+            apply_list = seq(apply_seq)->val.lval;
+        }
+        if (apply_fn->type == S_BUILTIN) {
+            return apply_fn->val.bval(apply_list);
+        }
+        else if (apply_fn->type == S_FN) {
+            fn = apply_fn->val.fval;
+            return eval(fn->forms,new_env(37,fn->env,fn->args,
+                                          list2var(apply_list)));
+        }
+        else {
+            throw(mal_error("apply object not callable"));
+        }
     }
     return &var_nil;
 }
@@ -685,8 +704,9 @@ VAR* b_map(LIST* list)
     if (elt && islist(elt->var->type)) {
         elt = seq(elt->var)->val.lval;
         while (elt) {
-            new_list = append(append(NULL,map_fn),elt->var);
-            mapped_list = append(mapped_list,eval(list2var(new_list),ns_get()));
+            new_list = append(append(NULL,map_fn),
+                              list2var(append(NULL,elt->var)));
+            mapped_list = append(mapped_list,b_apply(new_list));
             elt = elt->next;
         }
     }
