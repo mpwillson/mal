@@ -388,8 +388,10 @@ VAR* do_form(LIST* form,HASH* env)
     if (form == NULL) return &var_nil;
     if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
     var = last(form);
+    add_active(var);
     eval_ast(but_last(form),env);
     if (DEBUG) printf("do_form2: %s\n",print_str(var,true,true));
+    del_active(1);
     return var;
 }
 
@@ -526,6 +528,7 @@ VAR* eval_ast(VAR* ast, HASH* env)
         return ast;
     }
     else if (islist(ast->type)) {
+        add_active(ast);
         elt = ast->val.lval;
         while (elt != NULL) {
             evaled_var = eval(elt->var,env);
@@ -535,6 +538,7 @@ VAR* eval_ast(VAR* ast, HASH* env)
         list_var = new_var();
         list_var->type = ast->type;
         list_var->val.lval = ref_elt(list);
+        del_active(1);
         return list_var;
     }
     return ast;
@@ -544,7 +548,7 @@ VAR* eval(VAR* ast,HASH* env)
 {
     VAR* eval_list;
     LIST* elt;
-    FN* fn;
+    FN* fn = NULL;
 
     while (true) {
         if (DEBUG) printf("eval: %s\n",print_str(ast,true,true));
@@ -598,10 +602,13 @@ VAR* eval(VAR* ast,HASH* env)
                 }
             }
             eval_list = eval_ast(ast,env);
+            /* add_active(ast); NOT REQUIRED? (see others below)*/
             if (eval_list->type == S_LIST) {
                 elt = eval_list->val.lval;
                 if (elt->var->type == S_BUILTIN) {
                     eval_list = elt->var->val.bval(elt->next);
+                    if (fn) env->closure = false;
+                    /* del_active(1); */
                     return eval_list;
                 }               
                 else if (elt->var->type == S_FN) {
@@ -609,19 +616,25 @@ VAR* eval(VAR* ast,HASH* env)
                     env = new_env(37,fn->env,
                                   fn->args,
                                   list2var(elt->next));
+                    env->closure = true;
                     ast = fn->forms;
                 }
                 else {
                     throw(mal_error("'%s' not found",
                                     print_str(elt->var,true,true)));
+                    if (fn) env->closure = false;
+                    /* del_active(1); */
                     return &error;
                 }
             }
             else {
+                if (fn) env->closure = false;
                 return eval_list;
             }   
+            /* del_active(1); */
         }
         else {
+            if (fn) env->closure = false;
             return eval_ast(ast,env);
         }
     }
