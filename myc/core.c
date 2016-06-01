@@ -59,15 +59,18 @@ VAR* b_listp(LIST* list)
 
 VAR* b_emptyp(LIST* list)
 {
-    if (list->var->type == S_VECTOR) {
-        return (list->var->val.vval->size==0?&var_true:&var_false);
+    if (list) {
+        if (list->var->type == S_VECTOR) {
+            return (list->var->val.vval->size==0?&var_true:&var_false);
+        }
+        else if (islist(list->var->type) && list->var->val.lval == NULL) {
+            return &var_true;
+        }
+        else if (list->var->type == S_STR && strlen(list->var->val.pval) == 0) {
+            return &var_true;
+        }
     }
-    else if (islist(list->var->type) && list->var->val.lval == NULL) {
-        return &var_true;
-    }
-    else {
-        return &var_false;
-    }
+    return &var_false;
 }
 
 /* forward declaration */
@@ -1056,7 +1059,6 @@ VAR* b_is_string(LIST* list)
     else
         return &var_false;
 }
-
     
 struct s_builtin core_fn[] =
 {

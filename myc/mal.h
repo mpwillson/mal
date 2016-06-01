@@ -39,7 +39,7 @@
 struct s_list;
 struct s_var;
 struct s_fn;
-struct s_hash;
+struct s_hash; /* defined in env.h */
 
 typedef struct s_var VAR;
 typedef struct s_list LIST;
