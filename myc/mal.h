@@ -29,6 +29,7 @@
 #define S_BUILTIN 23
 #define S_COMMENT 24
 #define S_MACRO 25
+#define S_ATOM 26
 
 #define islist(t) (t == S_ROOT || t == S_LIST || t == S_VECTOR)/* ||    \
                         t == S_HASHMAP) */
@@ -50,20 +51,21 @@ typedef VAR*(*BUILTIN)(LIST*);
 
 union u_val {
 	char *pval;
-	int ival;
+	long int ival;
 	double rval;
     FN* fval;
     LIST* lval;
     BUILTIN bval;
     VEC* vval;
     struct s_hash* hval;
-    
+    VAR* var;
 };
 
 struct s_var {
 	int type;
 	union u_val val;
     bool marked;
+    struct s_hash *meta;
 };
 
 struct s_list {

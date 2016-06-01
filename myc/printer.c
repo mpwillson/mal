@@ -119,7 +119,7 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             strcat(buffer,list_close(var->type));
             return buffer;
         case S_INT:
-            sprintf(tok,"%d",var->val.ival);
+            sprintf(tok,"%ld",var->val.ival);
             break;
         case S_REAL:
             sprintf(tok,"%f",var->val.rval);
@@ -163,6 +163,11 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             break;
         case S_MACRO:
             sprintf(tok,"#<macro %x>",(unsigned int)var->val.bval);
+            break;
+        case S_ATOM:
+            strcat(buffer,"(atom ");
+            print_str(var->val.var,print_readably,false);
+            strcat(buffer,")");
             break;
         case S_EOF:
             break;

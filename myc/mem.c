@@ -77,7 +77,6 @@ void* mal_malloc(size_t size)
     void* ptr;
 
     ptr = malloc(size);
-    /* if ptr is nil, invoke gc */
     return ptr;
 }
 
@@ -125,13 +124,13 @@ VAR* new_var() {
     VAR* var;
     LIST* elt = new_elt();
 
-    /* if (mem_inuse.nvars > 400) gc(); */
     var = (VAR *) mal_malloc(sizeof(VAR));
     if (var == NULL)  {
         mal_die("out of memory at new_var.");
     }
     mem_inuse.nvars++;
     var->type = S_UNDEF;
+    var->meta = NULL;
     var->val.lval = NULL;
     var->marked = false;
     elt->var = var;
@@ -180,8 +179,12 @@ void add_active(VAR* var)
 
 void del_active(int n)
 {
+    LIST* elt;
+    
     while (n--) {
-        active_vars = active_vars->next;
+        elt = active_vars->next;
+        free(active_vars);
+        active_vars = elt;
     }
     return;
 }
@@ -382,4 +385,9 @@ void gc(void)
     }
     if (DEBUG) printf("gc: freed: %d; current: %d\n",nunmarked,nmarked); 
 
+}
+
+void check_for_gc(int n)
+{
+    if (mem_inuse.nvars > n) gc();
 }

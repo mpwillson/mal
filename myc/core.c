@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <readline/readline.h>
 
 #include "mal.h"
 #include "env.h"
@@ -930,6 +932,132 @@ VAR* b_gc(LIST* list)
     return &var_nil;
 }
 
+VAR* b_readline(LIST* list)
+{
+    bool at_eof;
+    char prompt[73];
+    char* buffer;
+    VAR* var;
+    
+    if (list&&list->var->type==S_STR) {
+        strncpy(prompt,list->var->val.pval,72);
+    }
+    else {
+        prompt[0] = '\0';
+    }
+    buffer = readline(prompt);
+    at_eof = feof(stdin) || buffer == NULL;
+    if (at_eof) return &var_nil;
+    var = new_var();
+    var->type = S_STR;
+    var->val.pval = buffer; /* OK? */
+    return var;
+}
+
+/* atom support (I'm sure this was originally in StepA, but now
+ * is in Step 6) */
+
+VAR* b_atom(LIST* list)
+{
+    VAR* var;
+    
+    if (list) {
+        var = new_var();
+        var->type = S_ATOM;
+        var->val.var = list->var;
+        return var;
+    }
+    return &var_nil;
+}
+
+VAR* b_is_atom(LIST* list)
+{
+    return (list && (list->var->type==S_ATOM))?&var_true:&var_false;
+}
+
+VAR* b_deref(LIST* list)
+{
+    return (list && (list->var->type == S_ATOM))?list->var->val.var:&var_nil;
+}
+
+VAR* b_reset(LIST* list)
+{
+    if (list && list->var->type == S_ATOM && list->next) {
+        list->var->val.var = list->next->var;
+        return list->var;
+    }
+    return &var_nil;
+}
+
+VAR* b_swap(LIST* list)
+{
+    VAR* atom;
+    FN* fn;
+    LIST* arg_list;
+
+    if (list && list->var->type == S_ATOM) {
+        atom = list->var;
+        if (list->next && list->next->var->type == S_FN) {
+            fn = list->next->var->val.fval;
+            arg_list = concat(append(NULL,atom->val.var),list->next->next);
+            atom->val.var = eval(fn->forms,new_env(37,fn->env,fn->args,
+                                                   list2var(arg_list)));
+            return atom->val.var;
+        }
+    }
+    return &var_nil;
+}
+
+/* add meta data at the var level. with-meta returns new var, with
+ * meta added. */
+VAR* b_with_meta(LIST* list)
+{
+    VAR* var;
+    
+    if (list && list->next && list->next->var->type == S_HASHMAP) {
+        var = copy_var(list->var);
+        var->meta = list->next->var->val.hval;
+        return var;
+    }
+    return &var_nil;
+}
+
+VAR* b_meta(LIST* list)
+{
+    VAR* var;
+    
+    if (list && list->var->meta) {
+        var = new_var();
+        var->type = S_HASHMAP;
+        var->val.hval = list->var->meta;
+        return var;
+    }
+    return &var_nil;
+}
+
+VAR* b_time_ms(LIST* list)
+{
+    VAR* var;
+    struct timeval tv;
+
+    if (gettimeofday(&tv,NULL) == 0) {
+        var = new_var();
+        var->type = S_INT;
+        var->val.ival = (long int) (tv.tv_sec*1000+tv.tv_usec/1000.0);
+        return var;
+    }
+    return &var_nil;
+}
+
+VAR* b_is_string(LIST* list)
+{
+    if (list && list->var->type == S_STR)
+        return &var_true;
+    else
+        return &var_false;
+}
+
+    
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -981,7 +1109,17 @@ struct s_builtin core_fn[] =
     {"sequential?",b_is_seq},
     {"print-env",b_print_env},
     {"print-mem",b_print_mem},
-    {"gc",b_gc}
+    {"gc",b_gc},
+    {"readline",b_readline},
+    {"atom",b_atom},
+    {"atom?",b_is_atom},
+    {"deref",b_deref},
+    {"reset!",b_reset},
+    {"swap!",b_swap},
+    {"with-meta",b_with_meta},
+    {"meta",b_meta},
+    {"time-ms",b_time_ms},
+    {"string?",b_is_string}
 };
 
 static HASH* repl_env = NULL;
