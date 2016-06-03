@@ -65,7 +65,7 @@ struct s_var {
 	int type;
 	union u_val val;
     bool marked;
-    struct s_hash *meta;
+    VAR* meta;
 };
 
 struct s_list {

@@ -138,7 +138,7 @@ VAR* seq(VAR* var)
         for (i=0;i<vec->size;i++) {
             list = append(list,vec->vector[i]);
         }
-        return list2var(list);
+        return (list==NULL?&var_nil:list2var(list));
     }
     else if (var->type == S_HASHMAP) {
         hash = var->val.hval;
@@ -148,7 +148,7 @@ VAR* seq(VAR* var)
             list = append(append(list,seq_var),sp->value);
         }
         free(iter);
-        return list2var(list);
+        return (list==NULL?&var_nil:list2var(list));
     }
     else if (var->type == S_STR) {
         for (s=var->val.pval;*s!='\0';s++) {
@@ -158,10 +158,10 @@ VAR* seq(VAR* var)
             seq_var->val.pval = strsave(ch_str);
             list = append(list,seq_var);
         }
-        return list2var(list);
+        return (list==NULL?&var_nil:list2var(list));
     }
     else if (islist(var->type)) {
-        return var;
+        return (var->val.lval==NULL?&var_nil:var);
     }
     return &var_nil;
 }
@@ -720,9 +720,13 @@ int main(int argc, char* argv[])
     /*     "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME " */
     /*     "(or ~@(rest xs))))))))",env); */
     rep("(def! *gensym-counter* (atom 0))",env);
-    rep("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))",env);
-    rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))",env);
-    
+    rep("(def! gensym "
+        "(fn* [] (symbol (str \"G__\" "
+        "(swap! *gensym-counter* (fn* [x] (+ 1 x)))))))",env);
+    rep("(defmacro! or (fn* (& xs) "
+        "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) "
+        "(let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
+        "(if ~condvar ~condvar (or ~@(rest xs)))))))))",env);
     rep("(defmacro! and (fn* (& xs) "
         "(if (empty? xs) true (if (= 1 (count xs)) (first xs) "
         "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME "

@@ -260,15 +260,15 @@ VAR* b_list(LIST* list)
 VAR* compare(char type,LIST* list)
 {
     LIST* elt;
-    int current = INT_MIN;
+    long int current = LONG_MIN;
     bool satisfied = true;
 
     elt = list;
     if (type == '<' || type == S_LTEQ) {
-        current = INT_MIN;
+        current = LONG_MIN;
     }
     else {
-        current = INT_MAX;
+        current = LONG_MAX;
     }
     while (elt != NULL) {
         if (elt->var->type == S_INT) {
@@ -571,6 +571,8 @@ LIST* concat(LIST* l1, LIST* l2)
 {
     LIST* elt;
 
+    if (!l1) return ref_elt(l2);
+    
     elt = l1;
     while (elt->next) {
         elt = elt->next;
@@ -998,13 +1000,19 @@ VAR* b_swap(LIST* list)
     FN* fn;
     LIST* arg_list;
 
-    if (list && list->var->type == S_ATOM) {
+    if (list && list->var->type == S_ATOM && list->next) {
         atom = list->var;
-        if (list->next && list->next->var->type == S_FN) {
+        if (list->next->var->type == S_FN) {
             fn = list->next->var->val.fval;
             arg_list = concat(append(NULL,atom->val.var),list->next->next);
             atom->val.var = eval(fn->forms,new_env(37,fn->env,fn->args,
                                                    list2var(arg_list)));
+            return atom->val.var;
+        }   
+        else if (list->next->var->type == S_BUILTIN) {
+            list = list->next;
+            arg_list = concat(append(NULL,atom->val.var),list->next);
+            atom->val.var = list->var->val.bval(arg_list);
             return atom->val.var;
         }
     }
@@ -1017,9 +1025,9 @@ VAR* b_with_meta(LIST* list)
 {
     VAR* var;
     
-    if (list && list->next && list->next->var->type == S_HASHMAP) {
+    if (list && list->next) {
         var = copy_var(list->var);
-        var->meta = list->next->var->val.hval;
+        var->meta = list->next->var;
         return var;
     }
     return &var_nil;
@@ -1027,13 +1035,8 @@ VAR* b_with_meta(LIST* list)
 
 VAR* b_meta(LIST* list)
 {
-    VAR* var;
-    
     if (list && list->var->meta) {
-        var = new_var();
-        var->type = S_HASHMAP;
-        var->val.hval = list->var->meta;
-        return var;
+        return list->var->meta;
     }
     return &var_nil;
 }

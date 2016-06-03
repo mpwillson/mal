@@ -77,7 +77,7 @@ DOCKERIZE =
 
 IMPLS = ada awk bash c d clojure coffee cpp crystal cs erlang elisp \
 	elixir es6 factor forth fsharp go groovy guile haskell haxe \
-	io java julia js kotlin lua make mal ocaml matlab miniMAL \
+	io java julia js kotlin lua make mal myc ocaml matlab miniMAL \
 	nim objc objpascal perl php plpgsql plsql ps python r racket \
 	rpython ruby rust scala swift swift3 tcl vb vhdl vimscript
 
@@ -167,6 +167,7 @@ kotlin_STEP_TO_PROG =  kotlin/$($(1)).jar
 lua_STEP_TO_PROG =     lua/$($(1)).lua
 make_STEP_TO_PROG =    make/$($(1)).mk
 mal_STEP_TO_PROG =     mal/$($(1)).mal
+myc_STEP_TO_PROG =     myc/$($(1))
 ocaml_STEP_TO_PROG =   ocaml/$($(1))
 matlab_STEP_TO_PROG =  matlab/$($(1)).m
 miniMAL_STEP_TO_PROG = miniMAL/$($(1)).json
