@@ -3,6 +3,7 @@ local types = require('types')
 local reader = require('reader')
 local printer = require('printer')
 local readline = require('readline')
+local socket = require('socket')
 
 local Nil, List, _pr_str = types.Nil, types.List, printer._pr_str
 
@@ -23,12 +24,14 @@ end
 function prn(...)
     print(table.concat(
         utils.map(function(e) return _pr_str(e, true) end, arg), " "))
+    io.flush()
     return Nil
 end
 
 function println(...)
     print(table.concat(
         utils.map(function(e) return _pr_str(e, false) end, arg), " "))
+    io.flush()
     return Nil
 end
 
@@ -115,6 +118,14 @@ function first(a)
     end
 end
 
+function rest(a)
+    if a == Nil then
+        return List:new()
+    else
+        return List:new(a:slice(2))
+    end
+end
+
 function apply(f, ...)
     if types._malfunc_Q(f) then
         f = f.fn
@@ -157,6 +168,37 @@ function swap_BANG(atm,f,...)
     return atm.val
 end
 
+local function conj(obj, ...)
+    local new_obj = types.copy(obj)
+    if types._list_Q(new_obj) then
+        for i, v in ipairs(arg) do
+            table.insert(new_obj, 1, v)
+        end
+    else
+        for i, v in ipairs(arg) do
+            table.insert(new_obj, v)
+        end
+    end
+    return new_obj
+end
+
+local function seq(obj, ...)
+    if obj == Nil or #obj == 0 then
+        return Nil
+    elseif types._list_Q(obj) then
+        return obj
+    elseif types._vector_Q(obj) then
+        return List:new(obj)
+    elseif types._string_Q(obj) then
+        local chars = {}
+        for i = 1, #obj do
+            chars[#chars+1] = string.sub(obj,i,i)
+        end
+        return List:new(chars)
+    end
+    return Nil
+end
+
 M.ns = {
     ['='] =  types._equal_Q,
     throw = types.throw,
@@ -166,6 +208,7 @@ M.ns = {
     ['false?'] =  function(a) return a==false end,
     symbol = function(a) return types.Symbol:new(a) end,
     ['symbol?'] = function(a) return types._symbol_Q(a) end,
+    ['string?'] = function(a) return types._string_Q(a) and "\177" ~= string.sub(a,1,1) end,
     keyword = function(a) return "\177"..a end,
     ['keyword?'] = function(a) return types._keyword_Q(a) end,
 
@@ -185,8 +228,7 @@ M.ns = {
     ['-'] =  function(a,b) return a-b end,
     ['*'] =  function(a,b) return a*b end,
     ['/'] =  function(a,b) return math.floor(a/b) end,
-    -- TODO: get actual milliseconds
-    ['time-ms'] = function() return os.time() * 1000 end,
+    ['time-ms'] = function() return math.floor(socket.gettime() * 1000) end,
 
     list = function(...) return List:new(arg) end,
     ['list?'] = function(a) return types._list_Q(a) end,
@@ -206,12 +248,13 @@ M.ns = {
     concat = concat,
     nth = nth,
     first = first,
-    rest = function(a) return List:new(a:slice(2)) end,
+    rest = rest,
     ['empty?'] = function(a) return a==Nil or #a == 0 end,
     count =  function(a) return #a end,
     apply = apply,
     map = map,
-    conj = function(...) return Nil end,
+    conj = conj,
+    seq = seq,
 
     meta = meta,
     ['with-meta'] = with_meta,

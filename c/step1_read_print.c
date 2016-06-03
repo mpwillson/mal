@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "types.h"
@@ -20,7 +21,7 @@ MalVal *READ(char prompt[], char *str) {
         }
     }
     ast = read_str(line);
-    if (!str) { free(line); }
+    if (!str) { MAL_GC_FREE(line); }
     return ast;
 }
 
@@ -61,6 +62,8 @@ int main()
     char *output;
     char prompt[100];
 
+    MAL_GC_SETUP();
+
     // Set the initial prompt
     snprintf(prompt, sizeof(prompt), "user> ");
  
@@ -73,8 +76,8 @@ int main()
         output = PRINT(exp);
 
         if (output) { 
-            g_print("%s\n", output);
-            free(output);        // Free output string
+            puts(output);
+            MAL_GC_FREE(output);        // Free output string
         }
 
         //malval_free(exp);    // Free evaluated expression

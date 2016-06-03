@@ -11,9 +11,12 @@ READ_ATOM () {
     local token=${__reader_tokens[${__reader_idx}]}
     __reader_idx=$(( __reader_idx + 1 ))
     case "${token}" in
-        [0-9]*) _number "${token}" ;;
+        [0-9]*)  _number "${token}" ;;
+        -[0-9]*) _number "${token}" ;;
         \"*)    token="${token:1:-1}"
                 token="${token//\\\"/\"}"
+                token="${token//\\n/$'\n'}"
+                token="${token//\\\\/\\}"
                 _string "${token}" ;;
         :*)     _keyword "${token:1}" ;;
         nil)    r="${__nil}" ;;
@@ -149,10 +152,10 @@ READ_STR () {
 READLINE_EOF=
 READLINE_HISTORY_FILE=${HOME}/.mal-history
 READLINE () {
-    history -r "${READLINE_HISTORY_FILE}"
+    history -r "${READLINE_HISTORY_FILE}" 2>/dev/null || true
     read -r -e -p "${1}" r || return "$?"
     history -s -- "${r}"
-    history -a "${READLINE_HISTORY_FILE}"
+    history -a "${READLINE_HISTORY_FILE}" 2>/dev/null || true
 }
 
 fi

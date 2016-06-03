@@ -80,7 +80,12 @@ function MAL_EVAL($ast, $env) {
 
     // apply list
     $ast = macroexpand($ast, $env);
-    if (!_list_Q($ast)) { return $ast; }
+    if (!_list_Q($ast)) {
+        return eval_ast($ast, $env);
+    }
+    if ($ast->count() === 0) {
+        return $ast;
+    }
 
     $a0 = $ast[0];
     $a0v = (_symbol_Q($a0) ? $a0->value : $a0);
@@ -160,7 +165,7 @@ function MAL_EVAL($ast, $env) {
 
 // print
 function MAL_PRINT($exp) {
-    return _pr_str($exp, True) . "\n";
+    return _pr_str($exp, True);
 }
 
 // repl
@@ -200,7 +205,7 @@ do {
         $line = mal_readline("user> ");
         if ($line === NULL) { break; }
         if ($line !== "") {
-            print(rep($line));
+            print(rep($line) . "\n");
         }
     } catch (BlankException $e) {
         continue;

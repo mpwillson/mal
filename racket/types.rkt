@@ -4,7 +4,7 @@
          malfunc malfunc? malfunc-fn
          malfunc-ast malfunc-env malfunc-params malfunc-macro? malfunc-meta
          _partition _equal? _printf
-         nil _nil? _keyword _keyword?
+         nil _nil? _keyword _keyword? _string?
          _to_list _sequential? _count _empty? _nth _first _rest _map
          _assoc _dissoc _get
          atom atom? atom-val set-atom-val!)
@@ -34,13 +34,23 @@
             (rest (drop xs n)))
         (cons first-chunk (_partition n rest)))))
 
+(define (_equal_seqs? seq_a seq_b)
+  (let ([a (_to_list seq_a)]
+        [b (_to_list seq_b)])
+    (and (= (length a) (length b))
+         (andmap (lambda (va vb) (_equal? va vb)) a b))))
+
+(define (_equal_hashes? a b)
+  (if (= (hash-count a) (hash-count b))
+    (let ([keys (hash-keys a)])
+      (andmap (lambda (k) (_equal? (_get a k) (_get b k))) keys))
+    #f))
+
 (define (_equal? a b)
   (cond
-    [(and (list? a) (vector? b))
-     (equal? a (vector->list b))]
-    [(and (vector? a) (list? b))
-     (equal? (vector->list a) b)]
-    [else (equal? a b)]))
+    [(and (_sequential? a) (_sequential? b)) (_equal_seqs? a b)]
+    [(and (hash? a) (hash? b))               (_equal_hashes? a b)]
+    [else                                    (equal? a b)]))
 
 ;; printf with flush
 (define _printf (lambda a (apply printf a) (flush-output)))
@@ -52,6 +62,9 @@
 (define (_keyword? k)
   (and (string? k) (regexp-match? #px"^\u029e" k)))
 
+;; Strings
+(define (_string? s)
+  (and (string? s) (not (_keyword? s))))
 
 ;; Lists and vectors
 

@@ -32,12 +32,12 @@ public class step9_try {
         } else {
             MalVal a0 = ((MalList)ast).nth(0);
             if ((a0 instanceof MalSymbol) &&
-                (((MalSymbol)a0).getName() == "unquote")) {
+                (((MalSymbol)a0).getName().equals("unquote"))) {
                 return ((MalList)ast).nth(1);
             } else if (is_pair(a0)) {
                 MalVal a00 = ((MalList)a0).nth(0);
                 if ((a00 instanceof MalSymbol) &&
-                    (((MalSymbol)a00).getName() == "splice-unquote")) {
+                    (((MalSymbol)a00).getName().equals("splice-unquote"))) {
                     return new MalList(new MalSymbol("concat"),
                                        ((MalList)a0).nth(1),
                                        quasiquote(((MalList)ast).rest()));
@@ -112,7 +112,9 @@ public class step9_try {
 
         // apply list
         MalVal expanded = macroexpand(orig_ast, env);
-        if (!expanded.list_Q()) { return expanded; } 
+        if (!expanded.list_Q()) {
+            return eval_ast(expanded, env);
+        }
         MalList ast = (MalList) expanded;
         if (ast.size() == 0) { return ast; }
         a0 = ast.nth(0);

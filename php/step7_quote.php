@@ -61,6 +61,9 @@ function MAL_EVAL($ast, $env) {
     if (!_list_Q($ast)) {
         return eval_ast($ast, $env);
     }
+    if ($ast->count() === 0) {
+        return $ast;
+    }
 
     // apply list
     $a0 = $ast[0];
@@ -117,7 +120,7 @@ function MAL_EVAL($ast, $env) {
 
 // print
 function MAL_PRINT($exp) {
-    return _pr_str($exp, True) . "\n";
+    return _pr_str($exp, True);
 }
 
 // repl
@@ -155,7 +158,7 @@ do {
         $line = mal_readline("user> ");
         if ($line === NULL) { break; }
         if ($line !== "") {
-            print(rep($line));
+            print(rep($line) . "\n");
         }
     } catch (BlankException $e) {
         continue;

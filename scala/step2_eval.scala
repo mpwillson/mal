@@ -13,7 +13,7 @@ object step2_eval {
       case v: MalVector  => v.map(EVAL(_, env))
       case l: MalList    => l.map(EVAL(_, env))
       case m: MalHashMap => {
-        m.map{case (k: String,v: Any) => (k, EVAL(v, env))}
+        m.map{case (k,v) => (k, EVAL(v, env))}
       }
       case _             => ast
     }
@@ -25,6 +25,8 @@ object step2_eval {
       return eval_ast(ast, env)
 
     // apply list
+    if (ast.asInstanceOf[MalList].value.length == 0)
+      return ast
     eval_ast(ast, env).asInstanceOf[MalList].value match {
       case f :: el => {
         var fn: List[Any] => Any = null

@@ -1,9 +1,8 @@
-$: << File.expand_path(File.dirname(__FILE__))
-require "mal_readline"
-require "types"
-require "reader"
-require "printer"
-require "env"
+require_relative "mal_readline"
+require_relative "types"
+require_relative "reader"
+require_relative "printer"
+require_relative "env"
 
 # read
 def READ(str)
@@ -33,6 +32,9 @@ def EVAL(ast, env)
 
     if not ast.is_a? List
         return eval_ast(ast, env)
+    end
+    if ast.empty?
+        return ast
     end
 
     # apply list

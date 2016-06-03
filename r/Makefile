@@ -1,17 +1,32 @@
 TESTS =
 
 SOURCES_BASE = readline.r types.r reader.r printer.r
-SOURCES_LISP = env.r core.r stepA_interop.r
+SOURCES_LISP = env.r core.r stepA_mal.r
 SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 
 all: libs
+
+dist: mal.r mal
+
+mal.r: $(SOURCES)
+	cat $+ | grep -v " source(" > $@
+
+mal: mal.r
+	echo "#!/usr/bin/env Rscript" > $@
+	cat $< >> $@
+	chmod +x $@
+
+clean:
+	rm -f mal.r mal
 
 .PHONY: stats tests $(TESTS)
 
 stats: $(SOURCES)
 	@wc $^
+	@printf "%5s %5s %5s %s\n" `grep -E "^[[:space:]]*#|^[[:space:]]*$$" $^ | wc` "[comments/blanks]"
 stats-lisp: $(SOURCES_LISP)
 	@wc $^
+	@printf "%5s %5s %5s %s\n" `grep -E "^[[:space:]]*#|^[[:space:]]*$$" $^ | wc` "[comments/blanks]"
 
 
 .PHONY:

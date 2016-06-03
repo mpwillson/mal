@@ -1,15 +1,10 @@
-/*
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-*/
 #include <stdlib.h>
 #include "types.h"
 
 // Env
 
 Env *new_env(Env *outer, MalVal* binds, MalVal *exprs) {
-    Env *e = malloc(sizeof(Env));
+    Env *e = MAL_GC_MALLOC(sizeof(Env));
     e->table = g_hash_table_new(g_str_hash, g_str_equal);
     e->outer = outer;
 

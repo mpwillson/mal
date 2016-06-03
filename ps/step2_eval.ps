@@ -4,7 +4,7 @@
 (printer.ps) runlibfile
 
 % read
-/_readline { print flush (%stdin) (r) file 99 string readline } def
+/_readline { print flush (%stdin) (r) file 1024 string readline } def
 
 /READ {
     /str exch def
@@ -49,9 +49,13 @@ end } def
     ast _list? not { %if not a list
         ast env eval_ast
     }{ %else apply the list
-        /el ast env eval_ast def
-        el _rest el _first % stack: ast function
-        exec % apply function to args
+        ast _count 0 eq {
+            ast
+        }{
+            /el ast env eval_ast def
+            el _rest el _first % stack: ast function
+            exec % apply function to args
+        } ifelse
     } ifelse
 end } def
 

@@ -15,7 +15,7 @@ object step5_tco {
       case v: MalVector  => v.map(EVAL(_, env))
       case l: MalList    => l.map(EVAL(_, env))
       case m: MalHashMap => {
-        m.map{case (k: String,v: Any) => (k, EVAL(v, env))}
+        m.map{case (k,v) => (k, EVAL(v, env))}
       }
       case _             => ast
     }
@@ -31,6 +31,9 @@ object step5_tco {
 
     // apply list
     ast.asInstanceOf[MalList].value match {
+      case Nil => {
+        return ast
+      }
       case Symbol("def!") :: a1 :: a2 :: Nil => {
         return env.set(a1.asInstanceOf[Symbol], EVAL(a2, env))
       }

@@ -5,7 +5,7 @@ using Mal;
 namespace Mal {
     public class types {
         //
-        // Exceptiosn/Errors
+        // Exceptions/Errors
         //
         public class MalThrowable : Exception {
             public MalThrowable() : base() { }
@@ -54,6 +54,19 @@ namespace Mal {
                     }
                     for (int i=0; i<((MalList)a).size(); i++) {
                         if (! _equal_Q(((MalList)a)[i], ((MalList)b)[i])) {
+                            return false;
+                        }
+                    }
+                    return true;
+                } else if (a is MalHashMap) {
+                    var akeys = ((MalHashMap)a).getValue().Keys;
+                    var bkeys = ((MalHashMap)b).getValue().Keys;
+                    if (akeys.Count != bkeys.Count) {
+                        return false;
+                    }
+                    foreach (var k in akeys) {
+                        if (!_equal_Q(((MalHashMap)a).getValue()[k],
+                                      ((MalHashMap)b).getValue()[k])) {
                             return false;
                         }
                     }

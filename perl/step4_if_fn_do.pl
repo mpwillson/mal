@@ -36,7 +36,7 @@ sub eval_ast {
         }
         when (/^HashMap/) {
             my $new_hm = {};
-            foreach my $k (keys($ast->{val})) {
+            foreach my $k (keys( %{ $ast->{val} })) {
                 $new_hm->{$k} = EVAL($ast->get($k), $env);
             }
             return HashMap->new($new_hm);
@@ -56,6 +56,7 @@ sub EVAL {
 
     # apply list
     my ($a0, $a1, $a2, $a3) = @{$ast->{val}};
+    if (!$a0) { return $ast; }
     given ((ref $a0) =~ /^Symbol/ ? $$a0 : $a0) {
         when (/^def!$/) {
             my $res = EVAL($a2, $env);

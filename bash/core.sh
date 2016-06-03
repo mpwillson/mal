@@ -38,10 +38,14 @@ false? () { _false? "${1}" && r="${__true}" || r="${__false}"; }
 
 # Symbol functions
 
+symbol () { _symbol "${ANON["${1}"]}"; }
+
 symbol? () { _symbol? "${1}" && r="${__true}" || r="${__false}"; }
 
 
 # Keyword functions
+
+keyword () { _keyword "${ANON["${1}"]}"; }
 
 keyword? () { _keyword? "${1}" && r="${__true}" || r="${__false}"; }
 
@@ -94,8 +98,7 @@ prn () {
 println () {
     local res=""
     for x in "${@}"; do _pr_str "${x}"; res="${res} ${r}"; done
-    res="${res//\\n/$'\n'}"
-    echo -e "${res:1}"
+    echo "${res:1}"
     r="${__nil}"; 
 }
 
@@ -248,6 +251,20 @@ count () {
     _number "${r}"
 }
 
+apply () {
+    local f="${ANON["${1}"]}"; shift
+    local items="${@:1:$(( ${#@} -1 ))} ${ANON["${!#}"]}"
+    eval ${f%%@*} ${items}
+}
+
+# Takes a function object and an list object and invokes the function
+# on each element of the list, returning a new list of the results.
+map () {
+    local f="${ANON["${1}"]}"; shift
+    #echo _map "${f}" "${@}"
+    _map "${f}" "${@}"
+}
+
 conj () {
     local obj="${1}"; shift
     local obj_data="${ANON["${obj}"]}"
@@ -263,18 +280,35 @@ conj () {
     fi
 }
 
-apply () {
-    local f="${ANON["${1}"]}"; shift
-    local items="${@:1:$(( ${#@} -1 ))} ${ANON["${!#}"]}"
-    eval ${f%%@*} ${items}
-}
+seq () {
+    local obj="${1}"; shift
+    local obj_data="${ANON["${obj}"]}"
 
-# Takes a function object and an list object and invokes the function
-# on each element of the list, returning a new list of the results.
-map () {
-    local f="${ANON["${1}"]}"; shift
-    #echo _map "${f}" "${@}"
-    _map "${f}" "${@}"
+
+    if _list? "${obj}"; then
+        _count "${obj}"
+        if [ "${r}" -eq 0 ]; then r="${__nil}"; return; fi
+        r="${obj}"
+    elif _vector? "${obj}"; then
+        _count "${obj}"
+        if [ "${r}" -eq 0 ]; then r="${__nil}"; return; fi
+        __new_obj_hash_code
+        r="list_${r}"
+        ANON["${r}"]="${obj_data}"
+    elif _string? "${obj}"; then
+        if [ "${#obj_data}" -eq 0 ]; then r="${__nil}"; return; fi
+        local i=0 acc=""
+        for (( i=0; i < ${#obj_data}; i++ )); do
+            _string "${obj_data:$i:1}"
+            acc="${acc} ${r}"
+        done
+        _list
+        ANON["${r}"]="${acc:1}"
+    elif _nil? "${obj}"; then
+        r="${__nil}"
+    else
+        throw "seq: called on non-sequence"
+    fi
 }
 
 
@@ -325,9 +359,10 @@ declare -A core_ns=(
     [nil?]=nil?
     [true?]=true?
     [false?]=false?
-    [symbol]=_symbol
+    [string?]=string?
+    [symbol]=symbol
     [symbol?]=symbol?
-    [keyword]=_keyword
+    [keyword]=keyword
     [keyword?]=keyword?
 
     [pr-str]=pr_str
@@ -368,9 +403,11 @@ declare -A core_ns=(
     [rest]=_rest
     [empty?]=empty?
     [count]=count
-    [conj]=conj
     [apply]=apply
     [map]=map
+
+    [conj]=conj
+    [seq]=seq
 
     [with-meta]=with_meta
     [meta]=meta

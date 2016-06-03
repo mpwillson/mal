@@ -1,25 +1,35 @@
 
-TESTS = tests/types.mk tests/reader.mk tests/stepA_interop.mk
+TESTS = tests/types.mk tests/reader.mk tests/stepA_mal.mk
 
 SOURCES_BASE = util.mk numbers.mk readline.mk gmsl.mk types.mk \
                reader.mk printer.mk
-SOURCES_LISP = env.mk core.mk stepA_interop.mk
+SOURCES_LISP = env.mk core.mk stepA_mal.mk
 SOURCES = $(SOURCES_BASE) $(SOURCES_LISP)
 
+all:
+	true
+
+dist: mal.mk mal
+
 mal.mk: $(SOURCES)
+	cat $+ | grep -v "^include " > $@
+
+mal: mal.mk
 	echo "#!/usr/bin/make -f" > $@
-	cat $+ | grep -v "^include " >> $@
+	cat $< >> $@
 	chmod +x $@
 
 clean:
-	rm -f mal.mk
+	rm -f mal.mk mal
 
 .PHONY: stats tests $(TESTS)
 
 stats: $(SOURCES)
 	@wc $^
+	@printf "%5s %5s %5s %s\n" `grep -E "^[[:space:]]*#|^[[:space:]]*$$" $^ | wc` "[comments/blanks]"
 stats-lisp: $(SOURCES_LISP)
 	@wc $^
+	@printf "%5s %5s %5s %s\n" `grep -E "^[[:space:]]*#|^[[:space:]]*$$" $^ | wc` "[comments/blanks]"
 
 tests: $(TESTS)
 

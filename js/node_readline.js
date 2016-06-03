@@ -16,7 +16,7 @@ var rllib = ffi.Library(RL_LIB, {
 var rl_history_loaded = false;
 
 exports.readline = rlwrap.readline = function(prompt) {
-    prompt = prompt || "user> ";
+    prompt = typeof prompt !== 'undefined' ? prompt : "user> ";
 
     if (!rl_history_loaded) {
         rl_history_loaded = true;
@@ -34,7 +34,11 @@ exports.readline = rlwrap.readline = function(prompt) {
     var line = rllib.readline(prompt);
     if (line) {
         rllib.add_history(line);
-        fs.appendFileSync(HISTORY_FILE, line + "\n");
+        try {
+            fs.appendFileSync(HISTORY_FILE, line + "\n");
+        } catch (exc) {
+            // ignored
+        }
     }
 
     return line;

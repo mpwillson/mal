@@ -39,6 +39,7 @@ function EVAL(ast, env)
     if not types._list_Q(ast) then return eval_ast(ast, env) end
 
     local a0,a1,a2 = ast[1], ast[2],ast[3]
+    if not a0 then return ast end
     local a0sym = types._symbol_Q(a0) and a0.val or ""
     if 'def!' == a0sym then
         return env:set(a1, EVAL(a2, env))
@@ -70,6 +71,10 @@ repl_env:set(types.Symbol:new('+'), function(a,b) return a+b end)
 repl_env:set(types.Symbol:new('-'), function(a,b) return a-b end)
 repl_env:set(types.Symbol:new('*'), function(a,b) return a*b end)
 repl_env:set(types.Symbol:new('/'), function(a,b) return math.floor(a/b) end)
+
+if #arg > 0 and arg[1] == "--raw" then
+    readline.raw = true
+end
 
 while true do
     line = readline.readline("user> ")

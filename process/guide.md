@@ -11,11 +11,28 @@ will be able to run a mal interpreter written in mal itself.
 
 So jump right in (er ... start the climb)!
 
+- [Pick a language](#pick-a-language)
+- [Getting started](#getting-started)
+- [General hints](#general-hints)
+- [The Make-A-Lisp Process](#the-make-a-lisp-process-1)
+  - [Step 0: The REPL](#step-0-the-repl)
+  - [Step 1: Read and Print](#step-1-read-and-print)
+  - [Step 2: Eval](#step-2-eval)
+  - [Step 3: Environments](#step-3-environments)
+  - [Step 4: If Fn Do](#step-4-if-fn-do)
+  - [Step 5: Tail call optimization](#step-5-tail-call-optimization)
+  - [Step 6: Files, Mutation, and Evil](#step-6-files-mutation-and-evil)
+  - [Step 7: Quoting](#step-7-quoting)
+  - [Step 8: Macros](#step-8-macros)
+  - [Step 9: Try](#step-9-try)
+  - [Step A: Metadata, Self-hosting and Interop](#step-a-metadata-self-hosting-and-interop)
+
+
 ## Pick a language
 
 You might already have a language in mind that you want to use.
 Technically speaking, mal can be implemented in any sufficiently
-complete programming (i.e. Turing complete), however, there are a few
+complete programming language (i.e. Turing complete), however, there are a few
 language features that can make the task MUCH easier. Here are some of
 them in rough order of importance:
 
@@ -40,6 +57,12 @@ In addition, the following will make your task especially easy:
 
 Here are some examples of languages that have all of the above
 features: JavaScript, Ruby, Python, Lua, R, Clojure.
+
+Michael Fogus has some great blog posts on interesting but less well
+known languages and many of the languages on his lists do not yet have
+any mal implementations:
+* http://blog.fogus.me/2011/08/14/perlis-languages/
+* http://blog.fogus.me/2011/10/18/programming-language-development-the-past-5-years/
 
 Many of the most popular languages already have Mal implementations.
 However, this should not discourage you from creating your own
@@ -68,8 +91,8 @@ git clone git@github.com:YOUR_NAME/mal.git
 cd mal
 ```
 
-* Make a new directory for your implementation. For example, if you
-* language is called "quux":
+* Make a new directory for your implementation. For example, if your
+language is called "quux":
 ```
 mkdir quux
 ```
@@ -82,14 +105,37 @@ mkdir quux
 IMPLS = ... quux ...
 ...
 quux_STEP_TO_PROG = mylang/$($(1)).qx
-...
-quux_RUNSTEP =  ../$(2) $(3)
+```
+
+* Add a "run" script to you implementation directory that listens to
+  the "STEP" environment variable for the implementation step to run
+  and defaults to "stepA_mal".  The following are examples of "run"
+  scripts for a compiled language and an interpreted language (where
+  the interpreter is named "quux"):
+
+```
+#!/bin/bash
+exec $(dirname $0)/${STEP:-stepA_mal} "${@}"
+```
+
+```
+#!/bin/bash
+exec quux $(dirname $0)/${STEP:-stepA_mal}.qx "${@}"
 ```
 
 This allows you to run tests against your implementation like this:
 ```
-make test^quux^stepX
+make "test^quux^stepX"
 ```
+
+If your implementation language is a compiled language, then you
+should also add a Makefile at the top level of your implementation
+directory. This Makefile will define how to build the files pointed to
+by the quux_STEP_TO_PROG macro. The top-level Makefile will attempt to
+build those targets before running tests. If it is a scripting
+language/uncompiled, then no Makefile is necessary because
+quux_STEP_TO_PROG will point to a source file that already exists and
+does not need to be compiled/built.
 
 
 ## General hints
@@ -104,6 +150,7 @@ compared/described:
 * http://learnxinyminutes.com/
 * http://hyperpolyglot.org/
 * http://rosettacode.org/
+* http://rigaux.org/language-study/syntax-across-languages/
 
 Do not let yourself be bogged down by specific problems. While the
 make-a-lisp process is structured as a series of steps, the reality is
@@ -111,16 +158,16 @@ that building a lisp interpreter is more like a branching tree. If you
 get stuck on tail call optimization, or hash-maps, move on to other
 things. You will often have a stroke of inspiration for a problem as
 you work through other functionality. I have tried to structure this
-guide and the tests to make clear which things are optional or can be
-deferred until later.
+guide and the tests to make clear which things can be deferred until
+later.
 
-An aside on optional bits: when you run the tests for a given step,
-the last tests are often marked with an "optional" header. This
-indicates that these are tests for functionality that is not critical
-to finish a basic mal implementation. Many of the steps in this
-process guide also have an "Optional" section, however, it is not
-quite the same meaning. Those sections do include the functionality
-that is marked as optional in the tests, but they also include
+An aside on deferrable/optional bits: when you run the tests for
+a given step, the last tests are often marked with an "optional"
+header. This indicates that these are tests for functionality that is
+not critical to finish a basic mal implementation. Many of the steps
+in this process guide have a "Deferrable" section, however, it is not
+quite the same meaning. Those sections include the functionality that
+is marked as optional in the tests, but they also include
 functionality that becomes mandatory at a later step. In other words,
 this is a "make your own Lisp adventure".
 
@@ -129,14 +176,22 @@ a bunch of tests associated with it and there is an easy script to run
 all the tests for a specific step in the process. Pick a failing test,
 fix it, repeat until all the tests for that step pass.
 
-The `process` directory contains abbreviated pseudocode and
-architecture images for each step of the make-a-lisp process. Use
-a textual diff/comparison tool to compare the previous pseudocode step
-with the one you are working on. The architecture images have changes
-from the previous step highlighted in red.
+## Reference Code
 
-If you get stuck, find the same step or functionality in a different
-implementation language.
+The `process` directory contains abbreviated pseudocode and
+architecture diagrams for each step of the make-a-lisp process. Use
+a textual diff/comparison tool to compare the previous pseudocode step
+with the one you are working on. The architecture diagram images have
+changes from the previous step highlighted in red. There is also
+a concise
+[cheatsheet](http://kanaka.github.io/mal/process/cheatsheet.html) that
+summarizes the key changes at each step.
+
+If you get completely stuck and are feeling like giving up, then you
+should "cheat" by referring to the same step or functionality in
+a existing implementation language. You are here to learn, not to take
+a test, so do not feel bad about it. Okay, you should feel a little
+bit bad about it.
 
 
 ## The Make-A-Lisp Process
@@ -161,18 +216,22 @@ This step is basically just creating a skeleton of your interpreter.
   language is a statically typed) and `rep` calls them in order
   passing the return to the input of the next.
 
-* Add a main loop that repeatedly prints a prompt, gets a line of
-  input from the user, calls `rep` with that line of input, and then
-  prints out the result from `rep`. It should also exit when you send
-  it an EOF (often Ctrl-D).
+* Add a main loop that repeatedly prints a prompt (needs to be
+  "user> " for later tests to pass), gets a line of input from the
+  user, calls `rep` with that line of input, and then prints out the
+  result from `rep`. It should also exit when you send it an EOF
+  (often Ctrl-D).
 
 * If you are using a compiled (ahead-of-time rather than just-in-time)
   language, then create a Makefile (or appropriate project definition
   file) in your directory.
 
-Run your new program and make sure that it echos each line that you
-type. Because step0 is so trivial, there are no automated tests to run
-for it.
+It is time to run your first tests. This will check that your program
+does input and output in a way that can be captured by the test
+harness. Go to the top level and run the following:
+```
+make "test^quux^step0"
+```
 
 Add and then commit your new `step0_repl.qx` and `Makefile` to git.
 
@@ -186,7 +245,7 @@ make-a-lisp process.
   interpreter REPL. Many languages have a library/module that provide
   line editing support. Another option if your language supports it is
   to use an FFI (foreign function interface) to load and call directly
-  into GNU readline, editline, or libnoise library. Add line
+  into GNU readline, editline, or linenoise library. Add line
   editing interface code to `readline.qx`
 
 
@@ -243,7 +302,7 @@ expression support.
 * If the target language has objects types (OOP), then the next step
   is to create a simple stateful Reader object in `reader.qx`. This
   object will store the tokens and a position. The Reader object will
-  have two methods: `next` and `peek`. `next` returns the tokens at
+  have two methods: `next` and `peek`. `next` returns the token at
   the current position and increments the position. `peek` just
   returns the token at the current position.
 
@@ -253,12 +312,32 @@ expression support.
   instance.
 
 * Add a function `tokenizer` in `reader.qx`. This function will take
-  a single single string and return an array/list
+  a single string and return an array/list
   of all the tokens (strings) in it. The following regular expression
   (PCRE) will match all mal tokens.
 ```
 [\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)
 ```
+* For each match captured within the parenthesis starting at char 6 of the
+  regular expression a new token will be created.
+
+  * `[\s,]*`: Matches any number of whitespaces or commas. This is not captured
+    so it will be ignored and not tokenized.
+
+  * `~@`: Captures the special two-characters `~@` (tokenized).
+
+  * ```[\[\]{}()'`~^@]```: Captures any special single character, one of
+    ```[]{}'`~^@``` (tokenized).
+
+  * `"(?:\\.|[^\\"])*"`: Starts capturing at a double-quote and stops at the
+    next double-quote unless it was proceeded by a backslash in which case it
+    includes it until the next double-quote (tokenized).
+
+  * `;.*`: Captures any sequence of characters starting with `;` (tokenized).
+
+  * ```[^\s\[\]{}('"`,;)]*```: Captures a sequence of zero or more non special
+    characters (e.g. symbols, numbers, "true", "false", and "nil") and is sort
+    of the inverse of the one above that captures special characters (tokenized).
 
 * Add the function `read_form` to `reader.qx`. This function
   will peek at the first token in the Reader object and switch on the
@@ -268,7 +347,7 @@ expression support.
   is a mal data type. If your target language is statically typed then
   you will need some way for `read_form` to return a variant or
   subclass type. For example, if your language is object oriented,
-  then you cal define a top level MalType (in `types.qx`) that all
+  then you can define a top level MalType (in `types.qx`) that all
   your mal data types inherit from. The MalList type (which also
   inherits from MalType) will contains a list/array of other MalTypes.
   If your language is dynamically typed then you can likely just
@@ -281,13 +360,13 @@ expression support.
   your language does not have a sequential data type that can hold mal
   type values you may need to implement one (in `types.qx`).  Note
   that `read_list` repeatedly calls `read_form` rather than
-  `read_atom`. This mutually recursive defintion between `read_list`
+  `read_atom`. This mutually recursive definition between `read_list`
   and `read_form` is what allows lists to contain lists.
 
 * Add the function `read_atom` to `reader.qx`. This function will
   look at the contents of the token and return the appropriate scalar
   (simple/single) data type value. Initially, you can just implement
-  numbers (integers) and symbols . This will allow you to proceed
+  numbers (integers) and symbols. This will allow you to proceed
   through the next couple of steps before you will need to implement
   the other fundamental mal types: nil, true, false, and string. The
   remaining mal types: keyword, vector, hash-map, and atom do not
@@ -321,7 +400,7 @@ manually try some simple inputs:
   * `   abc   ` -> `abc`
   * `(123 456)` -> `(123 456)`
   * `(  123   456 789   )   ` -> `(123 456 789)`
-  * `(  + 2   (+  3  4)  )  ` -> `(+ 2 (* 3 4))`
+  * `(  + 2   (*  3  4)  )  ` -> `(+ 2 (* 3 4))`
 
 To verify that your code is doing more than just eliminating extra
 spaces (and not failing), you can instrument your `reader.qx` functions.
@@ -330,7 +409,7 @@ Once you have gotten past those simple manual tests, it is time to run
 the full suite of step 1 tests. Go to the top level and run the
 following:
 ```
-make test^quux^step1
+make "test^quux^step1"
 ```
 
 Fix any test failures related to symbols, numbers and lists.
@@ -340,8 +419,22 @@ that you have now just completed one of the most difficult steps. It
 is down hill from here. The remaining steps will probably be easier
 and each step will give progressively more bang for the buck.
 
-#### Optional:
+#### Deferrable:
 
+
+* Add support for the other basic data type to your reader and printer
+  functions: string, nil, true, and false. These become mandatory at
+  step 4. When a string is read, the following transformations are
+  applied: a backslash followed by a doublequote is translated into
+  a plain doublequote character, a backslash followed by "n" is
+  translated into a newline, and a backslash followed by another
+  backslash is translated into a single backslash. To properly print
+  a string (for step 4 string functions), the `pr_str` function needs
+  another parameter called `print_readably`.  When `print_readably` is
+  true, doublequotes, newlines, and backslashes are translated into
+  their printed representations (the reverse of the reader). The
+  `PRINT` function in the main program should call `pr_str` with
+  print_readably set to true.
 
 * Add error checking to your reader functions to make sure parens
   are properly matched. Catch and print these errors in your main
@@ -349,29 +442,37 @@ and each step will give progressively more bang for the buck.
   exception handling, then you will need to add explicit error
   handling to your code to catch and pass on errors without crashing.
 
-* Add support for the other basic data type to your reader and printer
-  functions: string, nil, true, and false. These become mandatory at
-  step 4. When a string is read, a slash followed by a doublequote is
-  translatd into a plain doublequote character and a slash followed by
-  "n" is translated into a newline. To properly print a string (for
-  step 4 string functions), the `pr_str` function needs another
-  parameter called `print_readably`. When `print_readably` is true,
-  doublequotes and newlines are translated into their printed
-  representations (the reverse of the reader). The `PRINT` function in
-  the main program should call `pr_str` with print_readably set to
-  true.
+* Add support for reader macros which are forms that are
+  transformed into other forms during the read phase. Refer to
+  `tests/step1_read_print.mal` for the form that these macros should
+  take (they are just simple transformations of the token stream).
 
-* Add support for the other mal types: keyword, vector, hash-map, and
-  atom. TODO/TBD
-  * keyword: just a string stored with unicode prefix (or char 127 if
-    no unicode support).
-  * vector: can be implemented with same underlying type as list if
-    there is some mechanism for marking/distringuishing from a list.
-  * hash-map: only need to implement string keys (which enables
-    keyword keys since they are just special strings).
-
-* Add support for reader macros which are special forms that are
-  transformed into other forms during the read phase.
+* Add support for the other mal types: keyword, vector, hash-map.
+  * keyword: a keyword is a token that begins with a colon. A keyword
+    can just be stored as a string with special unicode prefix like
+    0x29E (or char 0xff/127 if the target language does not have good
+    unicode support) and the printer translates strings with that
+    prefix back to the keyword representation. This makes it easy to
+    use keywords as hash map keys in most languages. You can also
+    store keywords as a unique data type, but you will need to make
+    sure they can be used as hash map keys (which may involve doing
+    a similar prefixed translation anyways).
+  * vector: a vector can be implemented with same underlying
+    type as a list as long as there is some mechanism to keep track of
+    the difference. You can use the same reader function for both
+    lists and vectors by adding parameters for the starting and ending
+    tokens.
+  * hash-map: a hash-map is an associative data structure that maps
+    strings to other mal values. If you implement keywords as prefixed
+    strings, then you only need a native associative data structure
+    which supports string keys. Clojure allows any value to be a hash
+    map key, but the base functionality in mal is to support strings
+    and keyword keys. Because of the representation of hash-maps as
+    an alternating sequence of keys and values, you can probably use
+    the same reader function for hash-maps as lists and vectors with
+    parameters to indicate the starting and ending tokens. The odd
+    tokens are then used for keys with the corresponding even tokens
+    as the values.
 
 * Add comment support to your reader. The tokenizer should ignore
   tokens that start with ";". Your `read_str` function will need to
@@ -428,6 +529,7 @@ repl_env = {'+': lambda a,b: a+b,
 * Modify `EVAL` to check if the first parameter `ast` is a list.
   * `ast` is not a list: then return the result of calling `eval_ast`
     on it.
+  * `ast` is a empty list: return ast unchanged.
   * `ast` is a list: call `eval_ast` to get a new evaluated list. Take
     the first item of the evaluated list and call it as function using
     the rest of the evaluated list as its arguments.
@@ -451,10 +553,20 @@ a function references using an arguments list.
 
 Now go to the top level, run the step 2 tests and fix the errors.
 ```
-make test^quux^step2
+make "test^quux^step2"
 ```
 
 You now have a simple prefix notation calculator!
+
+#### Deferrable:
+
+* `eval_ast` should evaluate elements of vectors and hash-maps.  Add the
+  following cases in `eval_ast`:
+  * If `ast` is a vector: return a new vector that is the result of calling
+    `EVAL` on each of the members of the vector.
+  * If `ast` is a hash-map: return a new hash-map which consists of key-value
+    pairs where the key is a key from the hash-map and the value is the result
+    of calling `EVAL` on the corresponding value.
 
 
 <a name="step3"></a>
@@ -466,7 +578,7 @@ You now have a simple prefix notation calculator!
 In step 2 you were already introduced to REPL environment (`repl_env`)
 where the basic numeric functions were stored and looked up. In this
 step you will add the ability to create new environments (`let*`) and
-modify exiting environments (`def!`).
+modify existing environments (`def!`).
 
 A Lisp environment is an associative data structure that maps symbols (the
 keys) to values. But Lisp environments have an additional important
@@ -483,7 +595,7 @@ the changes that will be made during this step:
 diff -urp ../process/step2_eval.txt ../process/step3_env.txt
 ```
 
-* Copy `step2_eval.qx` to `step2_env.qx`.
+* Copy `step2_eval.qx` to `step3_env.qx`.
 
 * Create `env.qx` to hold the environment definition.
 
@@ -502,7 +614,7 @@ diff -urp ../process/step2_eval.txt ../process/step3_env.txt
     key is found up the outer chain, then throws/raises a "not found"
     error.
 
-* Update `step2_env.qx` to use the new `Env` type to create the
+* Update `step3_env.qx` to use the new `Env` type to create the
   repl_env (with a `nil` outer value) and use the `set` method to add
   the numeric functions.
 
@@ -514,17 +626,17 @@ diff -urp ../process/step2_eval.txt ../process/step3_env.txt
     (second parameter of `EVAL` called `env`) using the unevaluated
     first parameter (second list element) as the symbol key and the
     evaluated second parameter as the value.
-  * symbol "let*": create a new environment using the current
+  * symbol "let\*": create a new environment using the current
     environment as the outer value and then use the first parameter as
-    a list of new bindings in the "let" environment. Take the second
-    element of the binding list, call `EVAL` using the new "let*"
+    a list of new bindings in the "let\*" environment. Take the second
+    element of the binding list, call `EVAL` using the new "let\*"
     environment as the evaluation environment, then call `set` on the
-    "let" environment using the first binding list element as the key
+    "let\*" environment using the first binding list element as the key
     and the evaluated second element as the value. This is repeated
     for each odd/even pair in the binding list. Note in particular,
     the bindings earlier in the list can be referred to by later
     bindings. Finally, the second parameter (third element) of the
-    original `let*` form is evaluated using the new "let*" environment
+    original `let*` form is evaluated using the new "let\*" environment
     and the result is returned as the result of the `let*` (the new
     let environment is discarded upon completion).
   * otherwise: call `eval_ast` on the list and apply the first element
@@ -536,7 +648,7 @@ rest of the list elements (arguments) may be evaluated differently (or
 not at all) unlike the default apply case where all elements of the
 list are evaluated before the first element is invoked. Lists which
 contain a "special" as the first element are known as "special forms".
-The are special because the follow special evaluation rules.
+They are special because they follow special evaluation rules.
 
 Try some simple environment tests:
 
@@ -548,7 +660,7 @@ Try some simple environment tests:
 
 Now go to the top level, run the step 3 tests and fix the errors.
 ```
-make test^quux^step3
+make "test^quux^step3"
 ```
 
 You mal implementation is still basically just a numeric calculator
@@ -574,8 +686,8 @@ run. Most Lisp variants tend to be dynamically typed (types of values
 are checked when they are actually used at runtime).
 
 As an aside-aside: The great debate between static and dynamic typing
-debate can be understood by following the money. Advocates of strict
-static typing use words like "correctness" and "safety" and thus get
+can be understood by following the money. Advocates of strict static
+typing use words like "correctness" and "safety" and thus get
 government and academic funding. Advocates of dynamic typing use words
 like "agile" and "time-to-market" and thus get venture capital and
 commercial funding.
@@ -615,13 +727,13 @@ diff -urp ../process/step3_env.txt ../process/step4_if_fn_do.txt
 * Add support to `printer.qx` to print functions values. A string
   literal like "#<function>" is sufficient.
 
-* Add the following special forms to `EVAL`.
+* Add the following special forms to `EVAL`:
 
-  * `do`: Evaluate the all the elements of the list and return the
-    final element (evaluated).
+  * `do`: Evaluate all the elements of the list using `eval_ast`
+    and return the final evaluated element.
   * `if`: Evaluate the first parameter (second element). If the result
     (condition) is anything other than `nil` or `false`, then evaluate
-    the second parammeter (third element of the list) and return the
+    the second parameter (third element of the list) and return the
     result.  Otherwise, evaluate the third parameter (fourth element)
     and return the result. If condition is false and there is no third
     parameter, then just return `nil`.
@@ -661,6 +773,9 @@ Try out the basic functionality you have implemented:
   REPL environment (`repl_env`).
 
 * Add the following functions to `core.ns`:
+  * `prn`: call `pr_str` on the first parameter with `print_readably`
+    set to true, prints the result to the screen and then return
+    `nil`. Note that the full version of `prn` is a deferrable below.
   * `list`: take the parameters and return them as a list.
   * `list?`: return true if the first parameter is a list, false
     otherwise.
@@ -681,16 +796,17 @@ tests in step 4 but all of the non-optional tests that do not involve
 strings should be able to pass now.
 
 ```
-make test^quux^step4
+make "test^quux^step4"
 ```
 
 Your mal implementation is already beginning to look like a real
 language. You have flow control, conditionals, user-defined functions
 with lexical scope, side-effects (if you implement the string
-functions), etc. However, our little interpreter has not quite reach
-Lisp-ness yet. The next several steps will take
+functions), etc. However, our little interpreter has not quite reached
+Lisp-ness yet. The next several steps will take your implementation
+from a neat toy to a full featured language.
 
-#### Optional:
+#### Deferrable:
 
 * Implement Clojure-style variadic function parameters. Modify the
   constructor/initializer for environments, so that if a "&" symbol is
@@ -698,13 +814,13 @@ Lisp-ness yet. The next several steps will take
   after the "&" is bound to the rest of the `exprs` list that has not
   been bound yet.
 
-* Defines a `not` function using mal itself. In `step4_if_fn_do.qx`
+* Define a `not` function using mal itself. In `step4_if_fn_do.qx`
   call the `rep` function with this string:
   "(def! not (fn* (a) (if a false true)))".
 
 * Implement the strings functions in `core.qx`. To implement these
   functions, you will need to implement the string support in the
-  reader and printer (optional section of step 1). Each of the string
+  reader and printer (deferrable section of step 1). Each of the string
   functions takes multiple mal values, prints them (`pr_str`) and
   joins them together into a new string.
   * `pr-str`: calls `pr_str` on each argument with `print_readably`
@@ -737,10 +853,11 @@ calling back into `EVAL`. For those forms that call `EVAL` as the last
 thing that they do before returning (tail call) you will just loop back
 to the beginning of eval rather than calling it again. The advantage
 of this approach is that it avoids adding more frames to the call
-stack. This is especially important in Lisp languages because they do
-not tend to have iteration control structures preferring recursion
-instead. However, with tail call optimization, recursion can be made
-as stack efficient as iteration.
+stack. This is especially important in Lisp languages because they tend
+to prefer using recursion instead of iteration for control structures.
+(Though some Lisps, such as Common Lisp, have iteration.) However, with
+tail call optimization, recursion can be made as stack efficient as
+iteration.
 
 Compare the pseudocode for step 4 and step 5 to get a basic idea of
 the changes that will be made during this step:
@@ -748,7 +865,7 @@ the changes that will be made during this step:
 diff -urp ../process/step4_if_fn_do.txt ../process/step5_tco.txt
 ```
 
-* Copy `step4_env.qx` to `step5_tco.qx`.
+* Copy `step4_if_fn_do.qx` to `step5_tco.qx`.
 
 * Add a loop (e.g. while true) around all code in `EVAL`.
 
@@ -761,8 +878,8 @@ diff -urp ../process/step4_if_fn_do.txt ../process/step5_tco.txt
     `EVAL`) to be the second `ast` argument. Continue at the beginning
     of the loop (no return).
   * `do`: change the `eval_ast` call to evaluate all the parameters
-    the except for the last (2nd list element up to but not
-    including last). Set `ast` to the last element of `ast`. Continue
+    except for the last (2nd list element up to but not including
+    last). Set `ast` to the last element of `ast`. Continue
     at the beginning of the loop (`env` stays unchanged).
   * `if`: the condition continues to be evaluated, however, rather
     than evaluating the true or false branch, `ast` is set to the
@@ -772,19 +889,21 @@ diff -urp ../process/step4_if_fn_do.txt ../process/step5_tco.txt
 * The return value from the `fn*` special form will now become an
   object/structure with attributes that allow the default invoke case
   of `EVAL` to do TCO on mal functions. Those attributes are:
-  * `fn`: the original function value return in step 4
   * `ast`: the second `ast` argument (third list element) representing
     the body of the function.
   * `params`: the first `ast` argument (second list element)
     representing the parameter names of the function.
   * `env`: the current value of the `env` parameter of `EVAL`.
+  * `fn`: the original function value (i.e. what was return by `fn*`
+    in step 4). Note that this is deferrable until step 9 when it is
+    needed for the `map` and `apply` core functions).
 
 * The default "apply"/invoke case of `EVAL` must now be changed to
   account for the new object/structure returned by the `fn*` form.
   Continue to call `eval_ast` on `ast`. The first element is `f`.
   Switch on the type of `f`:
   * regular function (not one defined by `fn*`): apply/invoke it as
-  * before (in step 4).
+    before (in step 4).
   * a `fn*` value: set `ast` to the `ast` attribute of `f`. Generate
     a new environment using the `env` and `params` attributes of `f`
     as the `outer` and `binds` arguments and rest `ast` arguments
@@ -797,7 +916,7 @@ broken anything by adding TCO.
 Now go to the top level, run the step 5 tests.
 
 ```
-make test^quux^step5
+make "test^quux^step5"
 ```
 
 Look at the step 5 test file `tests/step5_tco.mal`. The `sum-to`
@@ -816,7 +935,7 @@ that most mainstream languages lack.
 
 <a name="step6"></a>
 
-### Step 6: Files and Evil
+### Step 6: Files, Mutation, and Evil
 
 ![step6_file architecture](step6_file.png)
 
@@ -847,12 +966,18 @@ diff -urp ../process/step5_tco.txt ../process/step6_file.txt
     unmarshall (extract) the string parameter to get the raw file name
     string and marshall (wrap) the result back to a mal string type.
 
-* In your main program, add a new `eval` (symbol) entry to your REPL
-  environment. The value of the new entry is a regular function
-  closure with a single argument `ast`. The closure calls the real
-  `EVAL` function using the `ast` as the first argument and the REPL
-  environment (closed over from outside) as the second argument.  The
-  result of the `EVAL` call is returned.
+* In your main program, add a new symbol "eval" to your REPL
+  environment. The value of this new entry is a function that takes
+  a single argument `ast`. The closure calls the your `EVAL` function
+  using the `ast` as the first argument and the REPL environment
+  (closed over from outside) as the second argument. The result of
+  the `EVAL` call is returned. This simple but powerful addition
+  allows your program to treat mal data as a mal program. For example,
+  you can now to this:
+```
+(def! mal-prog (list + 1 2))
+(eval mal-prog)
+```
 
 * Define a `load-file` function using mal itself. In your main
   program call the `rep` function with this string:
@@ -871,21 +996,63 @@ The `load-file` function does the following:
   * Call `eval` (the one in the REPL environment) on the AST returned
     from `read-string` to "run" it.
 
+Besides adding file and eval support, we'll add support for the atom data type
+in this step.  An atom is the Mal way to represent *state*; it is
+heavily inspired by [Clojure's atoms](http://clojure.org/state).  An atom holds
+a reference to a single Mal value of any type; it supports reading that Mal value
+and *modifying* the reference to point to another Mal value.  Note that this is
+the only Mal data type that is mutable (but the Mal values it refers to are
+still immutable; immutability is explained in greater detail in step 7).
+You'll need to add 5 functions to the core namespace to support atoms:
+
+  * `atom`: Takes a Mal value and returns a new atom which points to that Mal value.
+  * `atom?`: Takes an argument and returns `true` if the argument is an atom.
+  * `deref`: Takes an atom argument and returns the Mal value referenced by this atom.
+  * `reset!`: Takes an atom and a Mal value; the atom is modified to refer to
+    the given Mal value. The Mal value is returned.
+  * `swap!`: Takes an atom, a function, and zero or more function arguments. The
+    atom's value is modified to the result of applying the function with the atom's
+    value as the first argument and the optionally given function arguments as
+    the rest of the arguments. The new atom's value is returned. (Side note: Mal is
+    single-threaded, but in concurrent languages like Clojure, `swap!` promises
+    atomic update: `(swap! myatom (fn* [x] (+ 1 x)))` will always increase the
+    `myatom` counter by one and will not suffer from missing updates when the
+    atom is updated from multiple threads.)
+
+Optionally, you can add a reader macro `@` which will serve as a short form for
+`deref`, so that `@a` is equivalent to `(deref a)`.  In order to do that, modify
+the conditional in reader `read_form` function and add a case which deals with
+the `@` token: if the token is `@` (at sign) then return a new list that
+contains the symbol `deref` and the result of reading the next form
+(`read_form`).
+
 Now go to the top level, run the step 6 tests. The optional tests will
-need support from the reader for comments, vectors and hash-maps:
+need support from the reader for comments, vectors, hash-maps and the `@`
+reader macro:
 ```
-make test^quux^step6
+make "test^quux^step6"
 ```
 
 Congratulations, you now have a full-fledged scripting language that
-can run other mal programs. However, the set of functions that are
-available (from `core.qx`) is fairly limited. The bulk of the
-functions you will add are described in step 9, but you will begin to
-flesh them out over the next few steps to support quoting (step 7) and
-macros (step 8).
+can run other mal programs. The `slurp` function loads a file as
+a string, the `read-string` function calls the mal reader to turn that
+string into data, and the `eval` function takes data and evaluates it
+as a normal mal program. However, it is important to note that the
+`eval` function is not just for running external programs. Because mal
+programs are regular mal data structures, you can dynamically generate
+or manipulate those data structures before calling `eval` on them.
+This isomorphism (same shape) between data and programs is known as
+"homoiconicity". Lisp languages are homoiconic and this property
+distinguishes them from most other programming languages.
+
+You mal implementation is quite powerful already but the set of
+functions that are available (from `core.qx`) is fairly limited. The
+bulk of the functions you will add are described in step 9 and step A,
+but you will begin to flesh them out over the next few steps to
+support quoting (step 7) and macros (step 8).
 
 
-#### Optional:
+#### Deferrable:
 
 * Add the ability to run another mal program from the command line.
   Prior to the REPL loop, check if your mal implementation is called
@@ -895,7 +1062,7 @@ macros (step 8).
 
 * Add the rest of the command line arguments to your REPL environment
   so that programs that are run with `load-file` have access to their
-  calling environmnet. Add a new "*ARGV*" (symbol) entry to your REPL
+  calling environment. Add a new "\*ARGV\*" (symbol) entry to your REPL
   environment. The value of this entry should be the rest of the
   command line arguments as a mal list value.
 
@@ -913,7 +1080,7 @@ add a powerful abstraction for manipulating mal code itself
 
 The `quote` special form indicates to the evaluator (`EVAL`) that the
 parameter should not be evaluated (yet). At first glance, this might
-not seem particular useful but an example of what this enables is the
+not seem particularly useful but an example of what this enables is the
 ability for a mal program to refer to a symbol itself rather than the
 value that it evaluates to. Likewise with lists. For example, consider
 the following:
@@ -946,7 +1113,7 @@ result of evaluation is put in place into the quasiquoted list. The
 `splice-unquote` also turns evaluation back on for its argument, but
 the evaluated value must be a list which is then "spliced" into the
 quasiquoted list. The true power of the quasiquote form will be
-manifest when it used together with macros (in the next step).
+manifest when it is used together with macros (in the next step).
 
 Compare the pseudocode for step 6 and step 7 to get a basic idea of
 the changes that will be made during this step:
@@ -987,7 +1154,7 @@ Mal borrows most of its syntax and feature-set).
      a symbol named "quote" and `ast`.
   2. else if the first element of `ast` is a symbol named "unquote":
      return the second element of `ast`.
-  3. if `is_pair` of first element of `ast` is true and the first
+  3. if `is_pair` of the first element of `ast` is true and the first
      element of first element of `ast` (`ast[0][0]`) is a symbol named
      "splice-unquote": return a new list containing: a symbol named
      "concat", the second element of first element of `ast`
@@ -995,13 +1162,13 @@ Mal borrows most of its syntax and feature-set).
      second through last element of `ast`.
   4. otherwise: return a new list containing: a symbol named "cons", the
      result of calling `quasiquote` on first element of `ast`
-     (`ast[0]`), and result of calling `quasiquote` with the second
+     (`ast[0]`), and the result of calling `quasiquote` with the second
      through last element of `ast`.
 
 
 Now go to the top level, run the step 7 tests:
 ```
-make test^quux^step7
+make "test^quux^step7"
 ```
 
 Quoting is one of the more mundane functions available in mal, but do
@@ -1010,7 +1177,7 @@ complete, and quoting sets the stage for the next very exiting step:
 macros.
 
 
-#### Optional
+#### Deferrable
 
 * The full names for the quoting forms are fairly verbose. Most Lisp
   languages have a short-hand syntax and Mal is no exception. These
@@ -1022,7 +1189,7 @@ macros.
   * token is "'" (single quote): return a new list that contains the
     symbol "quote" and the result of reading the next form
     (`read_form`).
-  * token is "`" (back-tick): return a new list that contains the
+  * token is "\`" (back-tick): return a new list that contains the
     symbol "quasiquote" and the result of reading the next form
     (`read_form`).
   * token is "~" (tilde): return a new list that contains the
@@ -1045,7 +1212,7 @@ macros.
 
 ![step8_macros architecture](step8_macros.png)
 
-Your mal implementation is now ready for one of the most Lispy and
+Your mal implementation is now ready for one of the most lispy and
 exciting of all programming concepts: macros. In the previous step,
 quoting enabled some simple manipulation data structures and therefore
 manipulation of mal code (because the `eval` function from step
@@ -1095,8 +1262,9 @@ simple.
   section), perform macro expansion by calling the `macroexpand`
   function with the current value of `ast` and `env`. Set `ast` to the
   result of that call. If the new value of `ast` is no longer a list
-  after macro expansion, then return `ast`, otherwise continue with
-  the rest of the apply section (special forms switch).
+  after macro expansion, then return the result of calling `eval_ast`
+  on it, otherwise continue with the rest of the apply section
+  (special forms switch).
 
 * Add a new special form condition for `macroexpand`. Call the
   `macroexpand` function using the first `ast` argument (second list
@@ -1106,11 +1274,42 @@ simple.
 
 Now go to the top level, run the step 8 tests:
 ```
-make test^quux^step8
+make "test^quux^step8"
 ```
 
+There is a reasonably good chance that the macro tests will not pass
+the first time. Although the implementation of macros is fairly
+simple, debugging runtime bugs with macros can be fairly tricky. If
+you do run into subtle problems that are difficult to solve, let me
+recommend a couple of approaches:
 
-### Optional
+* Use the macroexpand special form to eliminate one of the layers of
+  indirection (to expand but skip evaluate). This will often reveal
+  the source of the issue.
+* Add a debug print statement to the top of your main `eval` function
+  (inside the TCO loop) to print the current value of `ast` (hint use
+  `pr_str` to get easier to debug output). Pull up the step8
+  implementation from another language and uncomment its `eval`
+  function (yes, I give you permission to violate the rule this once).
+  Run the two side-by-side. The first difference is likely to point to
+  the bug.
+
+Congratulations! You now have a Lisp interpreter with a super power
+that most non-Lisp languages can only dream of (I have it on good
+authority that languages dream when you are not using them). If you
+are not already familiar with Lisp macros, I suggest the following
+exercise: write a recursive macro that handles postfixed mal code
+(with the function as the last parameter instead of the first). Or
+not. I have not actually done so myself, but I have heard it is an
+interesting exercise.
+
+In the next step you will add try/catch style exception handling to
+your implementation in addition to some new core functions. After
+step9 you will be very close to having a fully self-hosting mal
+implementation. Let us continue!
+
+
+#### Deferrable
 
 * Add the following new core functions which are frequently used in
   macro functions:
@@ -1136,6 +1335,12 @@ make test^quux^step8
 
 ![step9_try architecture](step9_try.png)
 
+In this step you will implement the final mal special form for
+error/exception handling: `try*/catch*`. You will also add several core
+functions to your implementation. In particular, you will enhance the
+functional programming pedigree of your implementation by adding the
+`apply` and `map` core functions.
+
 Compare the pseudocode for step 8 and step 9 to get a basic idea of
 the changes that will be made during this step:
 ```
@@ -1144,35 +1349,286 @@ diff -urp ../process/step8_macros.txt ../process/step9_try.txt
 
 * Copy `step8_macros.qx` to `step9_try.qx`.
 
-* TODO/TBD
+* Add the `try*/catch*` special form to the EVAL function. The
+  try catch form looks like this: `(try* A (catch* B C))`. The form
+  `A` is evaluated, if it throws an exception, then form `C` is
+  evaluated with a new environment that binds the symbol `B` to the
+  value of the exception that was thrown.
+  * If your target language has built-in try/catch style exception
+    handling then you are already 90% of the way done. Add a
+    (native language) try/catch block that evaluates `A` within
+    the try block and catches all exceptions. If an exception is
+    caught, then translate it to a mal type/value. For native
+    exceptions this is either the message string or a mal hash-map
+    that contains the message string and other attributes of the
+    exception. When a regular mal type/value is used as an
+    exception, you will probably need to store it within a native
+    exception type in order to be able to convey/transport it using
+    the native try/catch mechanism. Then you will extract the mal
+    type/value from the native exception. Create a new mal environment
+    that binds `B` to the value of the exception. Finally, evaluate `C`
+    using that new environment.
+  * If your target language does not have built-in try/catch style
+    exception handling then you have some extra work to do. One of the
+    most straightforward approaches is to create a a global error
+    variable that stores the thrown mal type/value. The complication
+    is that there are a bunch of places where you must check to see if
+    the global error state is set and return without proceeding. The
+    rule of thumb is that this check should happen at the top of your
+    EVAL function and also right after any call to EVAL (and after any
+    function call that might happen to call EVAL further down the
+    chain). Yes, it is ugly, but you were warned in the section on
+    picking a language.
+
+* Add the `throw` core function.
+  * If your language supports try/catch style exception handling, then
+    this function takes a mal type/value and throws/raises it as an
+    exception. In order to do this, you may need to create a custom
+    exception object that wraps a mal value/type.
+  * If your language does not support try/catch style exception
+    handling, then set the global error state to the mal type/value.
+
+* Add the `apply` and `map` core functions. In step 5, if you did not
+  add the original function (`fn`) to the structure returned from
+  `fn*`, the you will need to do so now.
+  * `apply`: takes at least two arguments. The first argument is
+    a function and the last argument is list (or vector). The
+    arguments between the function and the last argument (if there are
+    any) are concatenated with the final argument to create the
+    arguments that are used to call the function. The apply
+    function allows a function to be called with arguments that are
+    contained in a list (or vector). In other words, `(apply F A B [C
+    D])` is equivalent to `(F A B C D)`.
+  * `map`: takes a function and a list (or vector) and evaluates the
+    function against every element of the list (or vector) one at
+    a time and returns the results as a list.
+
+* Add some type predicates core functions. In Lisp, predicates are
+  functions that return true/false (or true value/nil) and typically
+  end in "?" or "p".
+  * `nil?`: takes a single argument and returns true (mal true value)
+    if the argument is nil (mal nil value).
+  * `true?`: takes a single argument and returns true (mal true value)
+    if the argument is a true value (mal true value).
+  * `false?`: takes a single argument and returns true (mal true
+    value) if the argument is a false value (mal false value).
+  * `symbol?`: takes a single argument and returns true (mal true
+    value) if the argument is a symbol (mal symbol value).
+
+Now go to the top level, run the step 9 tests:
+```
+make "test^quux^step9"
+```
+
+Your mal implementation is now essentially a fully featured Lisp
+interpreter. But if you stop now you will miss one of the most
+satisfying and enlightening aspects of creating a mal implementation:
+self-hosting.
+
+#### Deferrable
+
+* Add the following new core functions:
+  * `symbol`: takes a string and returns a new symbol with the string
+    as its name.
+  * `keyword`: takes a string and returns a keyword with the same name
+    (usually just be prepending the special keyword
+    unicode symbol). This function should also detect if the argument
+    is already a keyword and just return it.
+  * `keyword?`: takes a single argument and returns true (mal true
+    value) if the argument is a keyword, otherwise returns false (mal
+    false value).
+  * `vector`: takes a variable number of arguments and returns
+    a vector containing those arguments.
+  * `vector?`: takes a single argument and returns true (mal true
+    value) if the argument is a vector, otherwise returns false (mal
+    false value).
+  * `hash-map`: takes a variable but even number of arguments and
+    returns a new mal hash-map value with keys from the odd arguments
+    and values from the even arguments respectively. This is basically
+    the functional form of the `{}` reader literal syntax.
+  * `map?`: takes a single argument and returns true (mal true
+    value) if the argument is a hash-map, otherwise returns false (mal
+    false value).
+  * `assoc`: takes a hash-map as the first argument and the remaining
+    arguments are odd/even key/value pairs to "associate" (merge) into
+    the hash-map. Note that the original hash-map is unchanged
+    (remember, mal values are immutable), and a new hash-map
+    containing the old hash-maps key/values plus the merged key/value
+    arguments is returned.
+  * `dissoc`: takes a hash-map and a list of keys to remove from the
+    hash-map. Again, note that the original hash-map is unchanged and
+    a new hash-map with the keys removed is returned. Key arguments
+    that do not exist in the hash-map are ignored.
+  * `get`: takes a hash-map and a key and returns the value of looking
+    up that key in the hash-map. If the key is not found in the
+    hash-map then nil is returned.
+  * `contains?`: takes a hash-map and a key and returns true (mal true
+    value) if the key exists in the hash-map and false (mal false
+    value) otherwise.
+  * `keys`: takes a hash-map and returns a list (mal list value) of
+    all the keys in the hash-map.
+  * `vals`: takes a hash-map and returns a list (mal list value) of
+    all the values in the hash-map.
+  * `sequential?`: takes a single arguments and returns true (mal true
+    value) if it is a list or a vector, otherwise returns false (mal
+    false value).
 
 
-<a name="step9"></a>
+<a name="stepA"></a>
 
-### Step A: Interop and Self-hosting
+### Step A: Metadata, Self-hosting and Interop
 
-![stepA_interop architecture](stepA_interop.png)
+![stepA_mal architecture](stepA_mal.png)
+
+You have reached the final step of your mal implementation. This step
+is kind of a catchall for things that did not fit into other steps.
+But most importantly, the changes you make in this step will unlock
+the magical power known as "self-hosting". You might have noticed
+that one of the languages that mal is implemented in is "mal". Any mal
+implementation that is complete enough can run the mal implementation
+of mal. You might need to pull out your hammock and ponder this for
+a while if you have never built a compiler or interpreter before. Look
+at the step source files for the mal implementation of mal (it is not
+cheating now that you have reached step A).
+
+If you deferred the implementation of keywords, vectors and hash-maps,
+now is the time to go back and implement them if you want your
+implementation to self-host.
 
 Compare the pseudocode for step 9 and step A to get a basic idea of
 the changes that will be made during this step:
 ```
-diff -urp ../process/step9_try.txt ../process/stepA_interop.txt
+diff -urp ../process/step9_try.txt ../process/stepA_mal.txt
 ```
 
-* Copy `step9_try.qx` to `stepA_interop.qx`.
+* Copy `step9_try.qx` to `stepA_mal.qx`.
 
-* TODO/TBD
+* Add the `readline` core function. This functions takes a
+  string that is used to prompt the user for input. The line of text
+  entered by the user is returned as a string. If the user sends an
+  end-of-file (usually Ctrl-D), then nil is returned.
+
+* Add meta-data support to mal functions. TODO. Should be separate
+  from the function macro flag.
+
+* Add a new "\*host-language\*" (symbol) entry to your REPL
+  environment. The value of this entry should be a mal string
+  containing thename of the current implementation.
+
+* When the REPL starts up (as opposed to when it is called with
+  a script and/or arguments), call the `rep` function with this string
+  to print a startup header:
+  "(println (str \"Mal [\" *host-language* \"]\"))".
+
+
+Now go to the top level, run the step A tests:
+```
+make "test^quux^stepA"
+```
+
+Once you have passed all the non-optional step A tests, it is time to
+try self-hosting. Run your step A implementation as normal, but use
+the file argument mode you added in step 6 to run a each of the step
+from the mal implementation:
+```
+./stepA_mal.qx ../mal/step1_read_print.mal
+./stepA_mal.qx ../mal/step2_eval.mal
+...
+./stepA_mal.qx ../mal/step9_try.mal
+./stepA_mal.qx ../mal/stepA_mal.mal
+```
+
+There is a very good chance that you will encounter an error at some
+point while trying to run the mal in mal implementation steps above.
+Debugging failures that happen while self-hosting is MUCH more
+difficult and mind bending. One of the best approaches I have
+personally found is to add prn statements to the mal implementation
+step (not your own implementation of mal) that is causing problems.
+
+Another approach I have frequently used is to pull out the code from
+the mal implementation that is causing the problem and simplify it
+step by step until you have a simple piece of mal code that still
+reproduces the problem. Once the reproducer is simple enough you will
+probably know where in your own implementation that problem is likely
+to be. Please add your simple reproducer as a test case so that future
+implementers will fix similar issues in their code before they get to
+self-hosting when it is much more difficult to track down and fix.
+
+Once you can manually run all the self-hosted steps, it is time to run
+all the tests in self-hosted mode:
+```
+make MAL_IMPL=quux "test^mal"
+```
+
+When you run into problems (which you almost certainly will), use the
+same process described above to debug them.
+
+Congratulations!!! When all the tests pass, you should pause for
+a moment and consider what you have accomplished. You have implemented
+a Lisp interpreter that is powerful and complete enough to run a large
+mal program which is itself an implementation of the mal language. You
+might even be asking if you can continue the "inception" by using your
+implementation to run a mal implementation which itself runs the mal
+implementation.
+
+
+#### Optional: gensym
+
+The `or` macro we introduced at step 8 has a bug. It defines a
+variable called `or_FIXME`, which "shadows" such a binding from the
+user's code (which uses the macro). If a user has a variable called
+`or_FIXME`, it cannot be used as an `or` macro argument. In order to
+fix that, we'll introduce `gensym`: a function which returns a symbol
+which was never used before anywhere in the program. This is also an
+example for the use of mal atoms to keep state (the state here being
+the number of symbols produced by `gensym` so far).
+
+Previously you used `rep` to define the `or` macro. Remove that
+definition and use `rep` to define the new counter, `gensym` function
+and the clean `or` macro. Here are the string arguments you need to
+pass to `rep`:
+```
+"(def! *gensym-counter* (atom 0))"
+
+"(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))"
+
+"(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))"
+```
+
+For extra information read [Peter Seibel's thorough discussion about
+`gensym` and leaking macros in Common Lisp](http://www.gigamonkeys.com/book/macros-defining-your-own.html#plugging-the-leaks).
+
+
+#### Optional additions
+
+* Add metadata support to composite data types, symbols and native
+  functions. TODO
+* Add the following new core functions:
+  * `time-ms`: takes no arguments and returns the number of
+    milliseconds since epoch (00:00:00 UTC January 1, 1970), or, if
+    not possible, since another point in time (`time-ms` is usually
+    used relatively to measure time durations).  After `time-ms` is
+    implemented, you can run the mal implementation performance
+    benchmarks by running `make perf^quux`.
+  * `conj`: takes a collection and one or more elements as arguments
+    and returns a new collection which includes the original
+    collection and the new elements.  If the collection is a list, a
+    new list is returned with the elements inserted at the start of
+    the given list in opposite order; if the collection is a vector, a
+    new vector is returned with the elements added to the end of the
+    given vector.
+  * `string?`: returns true if the parameter is a string.
+  * `seq`: takes a list, vector, string, or nil. If an empty list,
+    empty vector, or empty string ("") is passed in then nil is
+    returned. Otherwise, a list is returned unchanged, a vector is
+    converted into a list, and a string is converted to a list that
+    containing the original string split into single character
+    strings.
 
 
 ## TODO:
 
 * simplify: "X argument (list element Y)" -> ast[Y]
-* step 8 summary (power of macros, warning about macros, almost to
-  self-hosting)
-* step 9
-* step A
-* more info on hash-map and keyword implementation. Hash-maps just
-  need to support string keys.
 * list of types with metadata: list, vector, hash-map, mal functions
 * more clarity about when to peek and poke in read_list and read_form
 * tokenizer: use first group rather than whole match (to eliminate

@@ -81,7 +81,7 @@ EVAL <- function(ast, env) {
 
     # apply list
     ast <- macroexpand(ast, env)
-    if (!.list_q(ast)) return(ast)
+    if (!.list_q(ast)) return(eval_ast(ast, env))
 
     switch(paste("l",length(ast),sep=""),
            l0={ return(ast) },
@@ -174,7 +174,7 @@ Env.set(repl_env, "*ARGV*", new.list())
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {
-    Env.set(repl_env, "*ARGV*", new.listl(slice(list(args),2)))
+    Env.set(repl_env, "*ARGV*", new.listl(slice(as.list(args),2)))
     tryCatch({
         . <- rep(concat("(load-file \"", args[[1]], "\")"))
     }, error=function(err) {

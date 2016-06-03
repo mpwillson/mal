@@ -13,7 +13,7 @@
 MalVal *read_form(Reader *reader);
 
 Reader *reader_new() {
-    Reader *reader = (Reader*)malloc(sizeof(Reader));
+    Reader *reader = (Reader*)MAL_GC_MALLOC(sizeof(Reader));
     reader->array = g_array_sized_new(TRUE, FALSE, sizeof(char *), 8);
     reader->position = 0;
     return reader;
@@ -39,10 +39,10 @@ char *reader_next(Reader *reader) {
 void reader_free(Reader *reader) {
     int i;
     for(i=0; i < reader->array->len; i++) {
-        free(g_array_index(reader->array, char*, i));
+        MAL_GC_FREE(g_array_index(reader->array, char*, i));
     }
-    g_array_free(reader->array, TRUE); 
-    free(reader);
+    g_array_free(reader->array, TRUE);
+    MAL_GC_FREE(reader);
 }
 
 Reader *tokenize(char *line) {
@@ -78,38 +78,13 @@ Reader *tokenize(char *line) {
 }
 
 
-// From http://creativeandcritical.net/str-replace-c/ - Laird Shaw
 char *replace_str(const char *str, const char *old, const char *new)
 {
-    char *ret, *r;
-    const char *p, *q;
-    size_t oldlen = strlen(old);
-    size_t count, retlen, newlen = strlen(new);
-
-    if (oldlen != newlen) {
-        for (count = 0, p = str; (q = strstr(p, old)) != NULL; p = q + oldlen)
-            count++;
-        /* this is undefined if p - str > PTRDIFF_MAX */
-        retlen = p - str + strlen(p) + count * (newlen - oldlen);
-    } else
-        retlen = strlen(str);
-
-    if ((ret = malloc(retlen + 1)) == NULL)
-        return NULL;
-
-    for (r = ret, p = str; (q = strstr(p, old)) != NULL; p = q + oldlen) {
-        /* this is undefined if q - p > PTRDIFF_MAX */
-        ptrdiff_t l = q - p;
-        memcpy(r, p, l);
-        r += l;
-        memcpy(r, new, newlen);
-        r += newlen;
-    }
-    strcpy(r, p);
-
-    return ret;
+    GRegex *reg = g_regex_new (old, 0, 0, NULL);
+    char *str_tmp = g_regex_replace_literal(reg, str, -1, 0, new, 0, NULL);
+    MAL_GC_FREE(reg);
+    return str_tmp;
 }
-
 
 MalVal *read_atom(Reader *reader) {
     char *token;
@@ -142,18 +117,23 @@ MalVal *read_atom(Reader *reader) {
         atom = &mal_false;
     } else if (g_match_info_fetch_pos(matchInfo, 6, &pos, NULL) && pos != -1) {
         //g_print("read_atom string: %s\n", token);
-        char *str_tmp = replace_str(g_match_info_fetch(matchInfo, 6), "\\\"", "\"");
-        atom = malval_new_string(str_tmp);
+        char *str_tmp = replace_str(g_match_info_fetch(matchInfo, 6), "\\\\\"", "\"");
+        char *str_tmp2 = replace_str(str_tmp, "\\\\n", "\n");
+        MAL_GC_FREE(str_tmp);
+        char *str_tmp3 = replace_str(str_tmp2, "\\\\\\\\", "\\");
+        MAL_GC_FREE(str_tmp2);
+        atom = malval_new_string(str_tmp3);
     } else if (g_match_info_fetch_pos(matchInfo, 7, &pos, NULL) && pos != -1) {
         //g_print("read_atom keyword\n");
-        atom = malval_new_keyword(g_match_info_fetch(matchInfo, 7));
+        atom = malval_new_keyword(MAL_GC_STRDUP(g_match_info_fetch(matchInfo, 7)));
     } else if (g_match_info_fetch_pos(matchInfo, 8, &pos, NULL) && pos != -1) {
         //g_print("read_atom symbol\n");
-        atom = malval_new_symbol(g_match_info_fetch(matchInfo, 8));
+        atom = malval_new_symbol(MAL_GC_STRDUP(g_match_info_fetch(matchInfo, 8)));
     } else {
         malval_free(atom);
         atom = NULL;
     }
+
     return atom;
 }
 

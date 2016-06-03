@@ -24,7 +24,7 @@ EVAL_AST () {
     vector)
         _map_with_type _vector EVAL "${ast}" "${env}" ;;
     hash_map)
-        local res="" val="" hm="${ANON["${ast}"]}"
+        local res="" key= val="" hm="${ANON["${ast}"]}"
         _hash_map; local new_hm="${r}"
         eval local keys="\${!${hm}[@]}"
         for key in ${keys}; do
@@ -48,6 +48,7 @@ EVAL () {
         EVAL_AST "${ast}" "${env}"
         return
     fi
+    _empty? "${ast}" && r="${ast}" && return
 
     # apply list
     EVAL_AST "${ast}" "${env}"

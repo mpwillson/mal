@@ -21,6 +21,7 @@ eval_ast = (ast, env) ->
 EVAL = (ast, env) ->
   #console.log "EVAL:", printer._pr_str ast
   if !types._list_Q ast then return eval_ast ast, env
+  if ast.length == 0 then return ast
 
   # apply list
   [f, args...] = eval_ast ast, env
@@ -46,7 +47,9 @@ while (line = readline.readline("user> ")) != null
     console.log rep line
   catch exc
     continue if exc instanceof reader.BlankException
-    if exc.stack then console.log exc.stack
-    else              console.log exc
+    if exc.stack? and exc.stack.length > 2000
+      console.log exc.stack.slice(0,1000) + "\n  ..." + exc.stack.slice(-1000)
+    else if exc.stack? console.log exc.stack
+    else               console.log exc
 
 # vim: ts=2:sw=2

@@ -38,7 +38,7 @@ sub eval_ast {
         }
         when (/^HashMap/) {
             my $new_hm = {};
-            foreach my $k (keys($ast->{val})) {
+            foreach my $k (keys( %{ $ast->{val} })) {
                 $new_hm->{$k} = EVAL($ast->get($k), $env);
             }
             return HashMap->new($new_hm);
@@ -57,6 +57,7 @@ sub EVAL {
     }
 
     # apply list
+    if (scalar(@{$ast->{val}}) == 0) { return $ast; }
     my $el = eval_ast($ast, $env);
     my $f = $el->nth(0);
     return &{ $f }($el->rest());

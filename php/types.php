@@ -27,6 +27,14 @@ function _equal_Q($a, $b) {
             if (!_equal_Q($a[$i], $b[$i])) { return false; }
         }
         return true;
+    } elseif (_hash_map_Q($a)) {
+        if ($a->count() !== $b->count()) { return false; }
+        $hm1 = $a->getArrayCopy();
+        $hm2 = $b->getArrayCopy();
+        foreach (array_keys($hm1) as $k) {
+            if (!_equal_Q($hm1[$k], $hm2[$k])) { return false; }
+        }
+        return true;
     } else {
         return $a === $b;
     }
@@ -39,7 +47,9 @@ function _sequential_Q($seq) { return _list_Q($seq) or _vector_Q($seq); }
 function _nil_Q($obj) { return $obj === NULL; }
 function _true_Q($obj) { return $obj === true; }
 function _false_Q($obj) { return $obj === false; }
-function _string_Q($obj) { return is_string($obj); }
+function _string_Q($obj) {
+    return is_string($obj) && strpos($obj, chr(0x7f)) !== 0;
+}
 
 
 // Symbols

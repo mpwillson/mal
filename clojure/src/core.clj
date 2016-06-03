@@ -1,5 +1,6 @@
 (ns core
-  (:require [readline]))
+  (:require [readline]
+            [printer]))
 
 ;; Errors/exceptions
 (defn mal_throw [obj]
@@ -21,13 +22,14 @@
    ['nil? nil?]
    ['true? true?]
    ['false? false?]
+   ['string? string?]
    ['symbol symbol]
    ['symbol? symbol?]
    ['keyword keyword]
    ['keyword? keyword?]
 
    ['pr-str pr-str]
-   ['str str]
+   ['str printer/_str]
    ['prn prn]
    ['println println]
    ['readline readline/readline]
@@ -64,9 +66,11 @@
    ['rest rest]
    ['empty? empty?]
    ['count count]
-   ['conj conj]
    ['apply apply]
    ['map #(doall (map %1 %2))] 
+
+   ['conj conj]
+   ['seq (fn [obj] (seq (if (string? obj) (map str obj) obj)))]
 
    ['with-meta mal_with_meta]
    ['meta mal_meta]

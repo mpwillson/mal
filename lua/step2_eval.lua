@@ -39,6 +39,7 @@ end
 function EVAL(ast, env)
     --print("EVAL: "..printer._pr_str(ast,true))
     if not types._list_Q(ast) then return eval_ast(ast, env) end
+    if #ast == 0 then return ast end
     local args = eval_ast(ast, env)
     local f = table.remove(args, 1)
     return f(unpack(args))
@@ -56,6 +57,10 @@ local repl_env = {['+'] = function(a,b) return a+b end,
                   ['/'] = function(a,b) return math.floor(a/b) end}
 function rep(str)
     return PRINT(EVAL(READ(str),repl_env))
+end
+
+if #arg > 0 and arg[1] == "--raw" then
+    readline.raw = true
 end
 
 while true do

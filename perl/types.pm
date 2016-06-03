@@ -6,7 +6,7 @@ use feature qw(switch);
 use Exporter 'import';
 our @EXPORT_OK = qw(_sequential_Q _equal_Q _clone
                     $nil $true $false _nil_Q _true_Q _false_Q
-                    _symbol _symbol_Q _keyword _keyword_Q _list_Q _vector_Q
+                    _symbol _symbol_Q _string_Q _keyword _keyword_Q _list_Q _vector_Q
                     _hash_map _hash_map_Q _assoc_BANG _dissoc_BANG _atom_Q);
 
 use Data::Dumper;
@@ -28,7 +28,7 @@ sub _equal_Q {
             return $$a eq $$b;
         }
         when (/^List/ || /^Vector/) {
-            if (! scalar(@{$a->{val}}) == scalar(@{$b->{val}})) {
+            if (! (scalar(@{$a->{val}}) == scalar(@{$b->{val}}))) {
                 return 0;
             }
             for (my $i=0; $i<scalar(@{$a->{val}}); $i++) {
@@ -39,7 +39,15 @@ sub _equal_Q {
             return 1;
         }
         when (/^HashMap/) {
-            die "TODO: Hash map comparison\n";
+            if (! (scalar(keys %{ $a->{val} }) == scalar(keys %{ $b->{val} }))) {
+                return 0;
+            }
+            foreach my $k (keys %{ $a->{val} }) {
+                if (!_equal_Q($a->{val}->{$k}, $b->{val}->{$k})) {
+                    return 0;
+                }
+            }
+            return 1;
         }
         default {
             return $$a eq $$b;
@@ -51,20 +59,11 @@ sub _equal_Q {
 sub _clone {
     my ($obj) = @_;
     given (ref $obj) {
-        when (/^List/) {
-            return List->new( [ @{$obj->{val}} ] );
-        }
-        when (/^Vector/) {
-            return Vector->new( [ @{$obj->{val}} ] );
-        }
-        when (/^HashMap/) {
-            return Vector->new( { %{$obj->{val}} } );
-        }
-        when (/^Function/) {
-            return Function->new_from_hash( { %{$obj} } );
+        when (/^CODE/) {
+            return FunctionRef->new( $obj );
         }
         default {
-            die "Clone of non-collection\n";
+            return bless {%{$obj}}, ref $obj;
         }
     }
 }
@@ -102,15 +101,18 @@ sub _false_Q { return $_[0] eq $false }
 
 {
     package Integer;
-    sub new  { my $class = shift; bless \$_[0] => $class }
+    sub new  { my $class = shift; bless \do { my $x=$_[0] }, $class }
 }
 
 
 {
     package Symbol;
-    sub new  { my $class = shift; bless \$_[0] => $class }
+    sub new  { my $class = shift; bless \do { my $x=$_[0] }, $class }
 }
 sub _symbol_Q { (ref $_[0]) =~ /^Symbol/ }
+
+
+sub _string_Q { ((ref $_[0]) =~ /^String/) && ${$_[0]} !~ /^\x{029e}/; }
 
 
 sub _keyword { return String->new(("\x{029e}".$_[0])); }
@@ -201,7 +203,6 @@ sub _hash_map_Q { (ref $_[0]) =~ /^HashMap/ }
                'params'=>$params,
                'ismacro'=>0}, $class
     }
-    sub new_from_hash { my $class = shift; bless $_[0], $class }
     sub gen_env {
         my $self = $_[0];
         return Env->new($self->{env}, $self->{params}, $_[1]);
@@ -209,6 +210,22 @@ sub _hash_map_Q { (ref $_[0]) =~ /^HashMap/ }
     sub apply {
         my $self = $_[0];
         return &{ $self->{eval} }($self->{ast}, gen_env($self, $_[1]));
+    }
+}
+
+
+# FunctionRef
+
+{
+    package FunctionRef;
+    sub new {
+        my ($class, $code) = @_;
+        bless {'meta'=>$nil,
+               'code'=>$code}, $class
+    }
+    sub apply {
+        my $self = $_[0];
+        return &{ $self->{code} }($_[1]);
     }
 }
 

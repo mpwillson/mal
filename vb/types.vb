@@ -6,7 +6,7 @@ Imports Mal
 namespace Mal
     Public Class types
         '
-        ' Exceptiosn/Errors
+        ' Exceptions/Errors
         '
         Public Class MalThrowable
             Inherits Exception
@@ -72,6 +72,19 @@ namespace Mal
                     for i As Integer = 0 To DirectCast(a,MalList).size()-1
                         If not _equal_Q(DirectCast(a,MalList)(i),
                                         DirectCast(b,MalList)(i))
+                            return False
+                        End If
+                    Next
+                    return True
+                Else If TypeOf a Is MalHashMap Then
+                    Dim ahm As Dictionary(Of String,MalVal) = DirectCast(a,MalHashMap).getValue()
+                    Dim bhm As Dictionary(Of String,MalVal) = DirectCast(b,MalHashMap).getValue()
+                    For Each key As String in ahm.keys
+                        If not bhm.ContainsKey(key) Then
+                            return False
+                        End If
+                        If not _equal_Q(DirectCast(a,MalHashMap).getValue()(key),
+                                        DirectCast(b,MalHashMap).getValue()(key))
                             return False
                         End If
                     Next
