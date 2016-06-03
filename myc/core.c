@@ -1059,7 +1059,53 @@ VAR* b_is_string(LIST* list)
     else
         return &var_false;
 }
+
+LIST* reverse_list(LIST* list)
+{
+    LIST* elt = NULL, *nelt = NULL;
+
+    while (list) {
+        elt = new_elt();
+        elt->var = list->var;
+        elt->next = nelt;
+        nelt = elt;
+        list = list->next;
+    }
+    return elt;
+}
     
+VAR* b_conj(LIST* list)
+{
+    LIST* conj_list;
+    VAR* var;
+    
+    if (list) {
+        if (list->var->type == S_LIST) {
+            conj_list = reverse_list(list->next);
+            if (conj_list == NULL) {
+                return list->var;
+            }
+            else {
+                return list2var(concat(conj_list,list->var->val.lval));
+            }
+        }
+        else if (list->var->type == S_VECTOR) {
+            var = new_var();
+            var->type = S_VECTOR;
+            var->val.vval = mkvector(concat(seq(list->var)->val.lval,list->next));
+            return var;
+        }
+    }
+    return &var_nil;
+}
+
+VAR* b_seq(LIST* list)
+{
+    if (list) return seq(list->var);
+    return &var_nil;
+}
+
+
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -1121,7 +1167,9 @@ struct s_builtin core_fn[] =
     {"with-meta",b_with_meta},
     {"meta",b_meta},
     {"time-ms",b_time_ms},
-    {"string?",b_is_string}
+    {"string?",b_is_string},
+    {"conj",b_conj},
+    {"seq",b_seq}
 };
 
 static HASH* repl_env = NULL;

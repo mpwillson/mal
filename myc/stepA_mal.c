@@ -131,6 +131,7 @@ VAR* seq(VAR* var)
     ITER* iter;
     SYM* sp;
     int i;
+    char ch_str[2] = " ", *s;
 
     if (var->type == S_VECTOR) {
         vec = var->val.vval;
@@ -147,6 +148,16 @@ VAR* seq(VAR* var)
             list = append(append(list,seq_var),sp->value);
         }
         free(iter);
+        return list2var(list);
+    }
+    else if (var->type == S_STR) {
+        for (s=var->val.pval;*s!='\0';s++) {
+            ch_str[0] = *s;
+            seq_var = new_var();
+            seq_var->type = S_STR;
+            seq_var->val.pval = strsave(ch_str);
+            list = append(list,seq_var);
+        }
         return list2var(list);
     }
     else if (islist(var->type)) {
