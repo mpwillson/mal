@@ -1,6 +1,6 @@
 /* reader.h - mal reader header file */
 
-#define LEXTOKSIZ 72
+#define LEXTOKSIZ 1024
 
 extern char lextok[];
 
