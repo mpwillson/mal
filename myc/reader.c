@@ -258,6 +258,23 @@ VAR* read_atom(int type,char *s)
             return &var_true;
         case S_FALSE:
             return &var_false;
+        case S_SYM:
+            if (strcmp(s,"quote")==0) {
+                return &quote;
+            }
+            else if (strcmp(s,"quasiquote")==0) {
+                return &quasiquote;
+            }
+            else if (strcmp(s,"unquote")==0) {
+                return &unquote;
+            }
+            else if  (strcmp(s,"splice-unquote")==0) {                
+                return &splice;
+            }
+            else if  (strcmp(s,"deref")==0) {                
+                return &deref;
+            }
+            /* fall through */
         default:
             new = new_var();
             new->type = type;

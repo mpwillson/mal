@@ -113,7 +113,7 @@ VAR* var_equalp(VAR* v1, VAR* v2)
         case S_LIST:
         case S_HASHMAP:
         case S_ROOT:
-            eq = list_equalp(v1->val.lval,seq(v2)->val.lval);
+            eq = list_equalp(seq(v1)->val.lval,seq(v2)->val.lval);
             break;
         case S_NIL:
         case S_FALSE:
@@ -133,7 +133,7 @@ bool list_equalp(LIST* l1, LIST* l2)
     e1 = l1;
     e2 = l2;
     while (e1 != NULL && e2 != NULL) {
-        if (!var_equalp(e1->var,e2->var)) {
+        if (var_equalp(e1->var,e2->var) == &var_false) {
             return false;
         }
         e1 = e1->next;
@@ -148,7 +148,8 @@ bool vec_equalp(VEC* v1,VEC* v2)
     
     if (v1->size != v2->size) return false;
     for (i=0;i<v1->size;i++) {
-        if (!var_equalp(v1->vector[i],v2->vector[i])) return false;
+        if (var_equalp(v1->vector[i],v2->vector[i]) == &var_false)
+            return false;
     }
     return true;
 }
@@ -591,12 +592,10 @@ VAR* b_concat(LIST* list)
     while (elt) {
         if (islist(elt->var->type)) {
             if (new) {
-                /* new = concat(new,copy_list(seq(elt->var)->val.lval)); */
-                new = concat(new,seq(elt->var)->val.lval);
+                new = concat(new,copy_list(seq(elt->var)->val.lval));
             }
             else {
-                /* new = copy_list(seq(elt->var)->val.lval); */
-                new = seq(elt->var)->val.lval;
+                new = copy_list(seq(elt->var)->val.lval);
             }
         }
         elt = elt->next;
@@ -989,7 +988,7 @@ VAR* b_reset(LIST* list)
 {
     if (list && list->var->type == S_ATOM && list->next) {
         list->var->val.var = list->next->var;
-        return list->var;
+        return list->next->var;
     }
     return &var_nil;
 }

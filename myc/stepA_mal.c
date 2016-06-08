@@ -478,7 +478,7 @@ VAR* handle_quasiquote(VAR* ast)
     if (!is_pair(ast)) {
         return list2var(append(append(NULL,&quote),ast));
     }
-    if ((first(ast)) == &unquote ) {
+    if (first(ast) == &unquote ) {
         return second(ast);
     }
     if (first(first(ast)) == &splice){
@@ -568,7 +568,7 @@ VAR* eval(VAR* ast,HASH* env)
         if (DEBUG) printf("eval: %s\n",print_str(ast,true,true));
         if (ast->type == S_LIST && ast->val.lval != NULL) {
             ast = macroexpand(ast,env);
-            if (ast->type != S_LIST) return ast;
+            if (ast->type != S_LIST) return eval_ast(ast,env);
             elt = ast->val.lval;
             if (elt->var->type == S_SYM) {
                 if (strcmp(elt->var->val.pval,"def!") == 0) {
@@ -597,10 +597,10 @@ VAR* eval(VAR* ast,HASH* env)
                 else if (strcmp(elt->var->val.pval,"fn*") == 0) {
                     return fn_form(elt->next,env,S_FN);
                 }
-                else if (strcmp(elt->var->val.pval,"quote") == 0) {
+                else if (elt->var == &quote) {
                     return (elt->next?elt->next->var:&var_nil);
                 }
-                else if (strcmp(elt->var->val.pval,"quasiquote") == 0) {
+                else if (elt->var == &quasiquote) {
                     ast = (elt->next?handle_quasiquote(elt->next->var):
                            &var_nil);
                     continue;

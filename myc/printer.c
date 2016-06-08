@@ -96,9 +96,9 @@ char* print_str(VAR* var,bool print_readably,bool top_level)
             sp = env_next(iter);
             if (!sp) strcat(buffer," ");
             while (sp) {
-                print_str(str2var(sp->name),true,false);
+                print_str(str2var(sp->name),print_readably,false);
                 strcat(buffer," ");
-                print_str(sp->value,true,false);
+                print_str(sp->value,print_readably,false);
                 strcat(buffer," ");
                 sp = env_next(iter);
             }
