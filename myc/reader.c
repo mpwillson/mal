@@ -259,6 +259,7 @@ VAR* read_atom(int type,char *s)
         case S_FALSE:
             return &var_false;
         case S_SYM:
+            /* handle (some) special forms */   
             if (strcmp(s,"quote")==0) {
                 return &quote;
             }
@@ -268,11 +269,38 @@ VAR* read_atom(int type,char *s)
             else if (strcmp(s,"unquote")==0) {
                 return &unquote;
             }
-            else if  (strcmp(s,"splice-unquote")==0) {                
+            else if (strcmp(s,"splice-unquote")==0) {                
                 return &splice;
             }
-            else if  (strcmp(s,"deref")==0) {                
+            else if (strcmp(s,"deref")==0) {                
                 return &deref;
+            }
+            else if (strcmp(s,"do") == 0) {
+                return &do_sym;
+            }
+            else if (strcmp(s,"def!") == 0) {
+                return &def;
+            }
+            else if (strcmp(s,"let*") == 0) {
+                return &let;
+            }
+            else if (strcmp(s,"if") == 0) {
+                return &if_sym;
+            }
+            else if (strcmp(s,"fn*") == 0) {
+                return &fn_sym;
+            }
+            else if (strcmp(s,"defmacro!") == 0) {
+                return &defmacro;
+            }
+            else if (strcmp(s,"macroexpand") == 0) {
+                return &macroexpand_sym;
+            }
+            else if (strcmp(s,"try*") == 0) {
+                return &try;
+            }
+            else if (strcmp(s,"catch*") == 0) {
+                return &catch;
             }
             /* fall through */
         default:

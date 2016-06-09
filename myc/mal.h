@@ -86,13 +86,22 @@ struct s_vec {
 };
 
     
-/* Declarations for pre-defined atoms */
+/* Declarations for pre-defined symbols - the special forms */
 extern VAR quote;
 extern VAR quasiquote;
 extern VAR unquote;
 extern VAR splice;
 extern VAR deref;
 extern VAR meta;
+extern VAR do_sym;
+extern VAR def;
+extern VAR let;
+extern VAR if_sym;
+extern VAR fn_sym;
+extern VAR defmacro;
+extern VAR macroexpand_sym;
+extern VAR try;
+extern VAR catch;
 extern VAR var_nil;
 extern VAR var_true;
 extern VAR var_false;

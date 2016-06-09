@@ -13,6 +13,8 @@
 #include "printer.h"
 #include "mem.h"
 
+#define DEBUG 0
+
 struct s_builtin {
     char* name;
     BUILTIN fn;
@@ -501,10 +503,16 @@ HASH* copy_hashmap(HASH* hash)
     return new;
 }
 
-// FIXME
 VEC* copy_vector(VEC* vec)
 {
-    return vec;
+    VEC* vec_copy = new_vec(vec->size);
+    int i;
+
+    for (i=0;i<vec->size;i++) {
+        vec_copy->vector[i] = vec->vector[i];
+    }
+    
+    return vec_copy;
 }
 
 VAR* copy_var(VAR* var)
@@ -670,10 +678,12 @@ VAR* b_apply(LIST* list)
     LIST* apply_list;
     
     if (!list) return &var_nil;
+    if (DEBUG) printf("apply form: %s\n",print_str(list2var(list),true,true));
     apply_fn = list->var;
     list = list->next;
     apply_args = but_last(list);
     apply_seq = last(list);
+    if (DEBUG) printf("apply seq: %s\n",print_str(apply_seq,true,true));
     if (!islist(apply_seq->type)) {
         throw(mal_error("apply form must specify seq"));
     }
@@ -683,12 +693,15 @@ VAR* b_apply(LIST* list)
         }
         else {
             apply_list = seq(apply_seq)->val.lval;
+            if (DEBUG) printf("apply list: %s\n",print_str(list2var(apply_list),true,true));
+            
         }
         if (apply_fn->type == S_BUILTIN) {
             return apply_fn->val.bval(apply_list);
         }
         else if (apply_fn->type == S_FN) {
             fn = apply_fn->val.fval;
+            if (DEBUG) printf("apply fn forms: %s\n",print_str(fn->forms,true,true));
             return eval(fn->forms,new_env(37,fn->env,fn->args,
                                           list2var(apply_list)));
         }
@@ -708,6 +721,7 @@ VAR* b_map(LIST* list)
     map_fn = list->var;
     elt = list->next;
     if (elt && islist(elt->var->type)) {
+        if (DEBUG) printf("map elt: %s\n",print_str(elt->var,true,true));
         elt = seq(elt->var)->val.lval;
         while (elt) {
             new_list = append(append(NULL,map_fn),
@@ -716,6 +730,7 @@ VAR* b_map(LIST* list)
             elt = elt->next;
         }
     }
+    if (DEBUG) printf("map result: %s\n",print_str(list2var(mapped_list),true,true));
     return list2var(mapped_list);
 }
 
@@ -1107,7 +1122,14 @@ VAR* b_seq(LIST* list)
     return &var_nil;
 }
 
-
+VAR* b_source(LIST* list)
+{
+    if (list && list->var->type == S_FN) {
+        return list->var->val.fval->forms;
+    }
+    return &var_nil;
+}
+        
 struct s_builtin core_fn[] =
 {
     {"+",b_plus},
@@ -1171,7 +1193,8 @@ struct s_builtin core_fn[] =
     {"time-ms",b_time_ms},
     {"string?",b_is_string},
     {"conj",b_conj},
-    {"seq",b_seq}
+    {"seq",b_seq},
+    {"source",b_source}
 };
 
 static HASH* repl_env = NULL;

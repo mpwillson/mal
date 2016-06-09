@@ -49,8 +49,15 @@ VAR var_false = {
 VAR empty_list = {
     S_LIST,{NULL}
 };
-
-VAR do_var = {S_SYM,{"do"}};
+VAR do_sym          = {S_SYM,{"do"}};
+VAR def             = {S_SYM,{"def!"}};
+VAR let             = {S_SYM,{"let*"}};
+VAR if_sym          = {S_SYM,{"if"}};
+VAR fn_sym          = {S_SYM,{"fn*"}};
+VAR defmacro        = {S_SYM,{"defmacro!"}};
+VAR macroexpand_sym = {S_SYM,{"macroexpand"}};
+VAR try             = {S_SYM,{"try*"}};
+VAR catch           = {S_SYM,{"catch*"}};
 
 VAR host_lang = {S_STR,{"myc"}};
 
@@ -171,6 +178,7 @@ VAR* but_last(LIST* list)
     LIST* elt, *new_list = NULL;
 
     if (!list) return &empty_list;
+    if (DEBUG) printf("but_last args: %s\n",print_str(list2var(list),true,true));
     elt = list;
     while (elt->next != NULL) {
         new_list = append(new_list,elt->var);
@@ -184,10 +192,12 @@ VAR* last(LIST* list)
     LIST* elt;
 
     if (!list) return &var_nil;
+    if (DEBUG) printf("last args: %s\n",print_str(list2var(list),true,true));
     elt = list;
     while (elt->next != NULL) {
         elt = elt->next;
     }
+    if (DEBUG) printf("last return var: %s\n",print_str(elt->var,true,true));
     return elt->var;
 }    
 
@@ -279,13 +289,13 @@ VAR* try_catch_form(LIST* list, HASH* env)
     VAR *try_form, *catch_form, *catch_var, *v, *ast = &var_nil;
     jmp_buf jmp_env_save;
 
-    try_form = cons(&do_var,(but_last(list))->val.lval);
+    try_form = cons(&do_sym,(but_last(list))->val.lval);
     catch_form = last(list);
     if (catch_form && (v=first(catch_form)) && v->type == S_SYM &&
-        strcmp(v->val.pval,"catch*") == 0) {
+        v == &catch) {
         memcpy(jmp_env_save,jmp_env,sizeof(jmp_env));
         catch_var = cons(second(catch_form),NULL);
-        catch_form = cons(&do_var,(rest(rest(catch_form)))->val.lval);
+        catch_form = cons(&do_sym,(rest(rest(catch_form)))->val.lval);
         if (setjmp(jmp_env) == 0) {
             ast = eval(try_form,env);
         }
@@ -322,7 +332,8 @@ VAR* fn_form(LIST* list,HASH *env,int type)
         fn = new_fn();
         fn_var = new_var();
         fn->args = list->var;
-        fn->forms = cons(&do_var,ref_elt(list->next));
+        fn->forms = cons(&do_sym,ref_elt(list->next));
+        if (DEBUG) printf("fn forms: %s\n",print_str(fn->forms,true,true));
         env->closure = true;
         fn->env = env;
         fn_var->type = type;
@@ -511,8 +522,8 @@ VAR* eval_ast(VAR* ast, HASH* env)
     VAR* list_var;
     LIST* list = NULL;
     LIST* elt;
-    VEC* vec;
-    HASH* hash;
+    VEC* vec, *vec_copy;
+    HASH* hash, *hash_copy;
     ITER* iter;
     SYM* sp;
     int i;
@@ -527,19 +538,27 @@ VAR* eval_ast(VAR* ast, HASH* env)
     }
     else if (ast->type == S_VECTOR) {
         vec = ast->val.vval;
+        vec_copy = new_vec(vec->size);
         for (i=0;i<vec->size;i++) {
-            vec->vector[i] = eval(vec->vector[i],env);
+            vec_copy->vector[i] = eval(vec->vector[i],env);
         }
-        return ast;
+        evaled_var = new_var();
+        evaled_var->type = S_VECTOR;
+        evaled_var->val.vval = vec_copy;
+        return evaled_var;
     }
     else if (ast->type == S_HASHMAP) {
         hash = ast->val.hval;
+        hash_copy = new_hash(hash->size);
         iter = env_iter_init(hash);
         while ((sp = env_next(iter)) != NULL) {
-            sp->value = eval(sp->value,env);
+            env_put(hash_copy,sp->name,eval(sp->value,env));
         }
         free(iter);
-        return ast;
+        evaled_var = new_var();
+        evaled_var->type = S_HASHMAP;
+        evaled_var->val.hval = hash_copy;
+        return evaled_var;
     }
     else if (islist(ast->type)) {
         add_active(ast);
@@ -588,13 +607,13 @@ VAR* eval(VAR* ast,HASH* env)
                         return &var_nil;
                     }
                 }
-                else if (strcmp(elt->var->val.pval,"do") == 0) {
+                else if (elt->var == &do_sym) {
                     ast = do_form(elt->next,env); continue;
                 }
-                else if (strcmp(elt->var->val.pval,"if") == 0) {
+                else if (elt->var == &if_sym) {
                     ast = if_form(elt->next,env); continue;
                 }
-                else if (strcmp(elt->var->val.pval,"fn*") == 0) {
+                else if (elt->var == &fn_sym) {
                     return fn_form(elt->next,env,S_FN);
                 }
                 else if (elt->var == &quote) {
@@ -605,13 +624,13 @@ VAR* eval(VAR* ast,HASH* env)
                            &var_nil);
                     continue;
                 }
-                else if (strcmp(elt->var->val.pval,"defmacro!") == 0) {
+                else if (elt->var == &defmacro) {
                     return defmacro_form(elt->next,env);
                 }
-                else if (strcmp(elt->var->val.pval,"macroexpand") == 0) {
+                else if (elt->var == &macroexpand_sym) {
                     return macroexpand(elt->next->var,env);
                 }
-                else if (strcmp(elt->var->val.pval,"try*") == 0) {
+                else if (elt->var == &try) {
                     return try_catch_form(elt->next,env);
                 }
             }
@@ -715,10 +734,6 @@ int main(int argc, char* argv[])
     rep("(def! not (fn* [x] (if x false true)))",env);
     rep("(def! load-file (fn* (f) (eval (read-string "
         "(str \"(do\" (slurp f) \"\\n)\")))))",env);
-    /* rep("(defmacro! or (fn* (& xs) " */
-    /*     "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) " */
-    /*     "`(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME " */
-    /*     "(or ~@(rest xs))))))))",env); */
     rep("(def! *gensym-counter* (atom 0))",env);
     rep("(def! gensym "
         "(fn* [] (symbol (str \"G__\" "
@@ -748,7 +763,13 @@ int main(int argc, char* argv[])
     
     /* execute mal program, if found */
     if (argc > 1) {
-        execute_program(argv[1],(argc-2),argv+2,env);
+        if (setjmp(jmp_env) != 0) {
+            fprintf(stderr,"%s\n",print_str(thrown_var,false,true));
+            return EXIT_FAILURE;
+        }
+        else {
+            execute_program(argv[1],(argc-2),argv+2,env);
+        }
     }
     else {
         rep("(println (str \"Mal [\" *host-language* \"]\"))",env);
