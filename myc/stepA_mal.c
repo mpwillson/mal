@@ -731,40 +731,47 @@ int main(int argc, char* argv[])
     HASH* env = ns_get();
 
     /* define mal functions and macros */
-    rep("(def! not (fn* [x] (if x false true)))",env);
-    rep("(def! load-file (fn* (f) (eval (read-string "
-        "(str \"(do\" (slurp f) \"\\n)\")))))",env);
-    rep("(def! *gensym-counter* (atom 0))",env);
-    rep("(def! gensym "
-        "(fn* [] (symbol (str \"G__\" "
-        "(swap! *gensym-counter* (fn* [x] (+ 1 x)))))))",env);
-    rep("(defmacro! or (fn* (& xs) "
-        "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) "
-        "(let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
-        "(if ~condvar ~condvar (or ~@(rest xs)))))))))",env);
-    rep("(defmacro! and (fn* (& xs) "
-        "(if (empty? xs) true (if (= 1 (count xs)) (first xs) "
-        "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME "
-        "(and ~@(rest xs))))))))",env);
-    rep("(defmacro! cond (fn* (& xs) "
-        "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) "
-        "(nth xs 1) (throw \"odd number of forms to cond\")) "
-        "(cons 'cond (rest (rest xs)))))))",env);
-    rep("(defmacro! -> (fn* [x & xs]"
-        "(if (empty? xs) x"
-        "(let* (x_ (first xs) nelt_ (count x_))"
-        "(if (= nelt_ 0) "
-        "`(-> (~x_ ~x) ~@(rest xs))"
-        "(if (= nelt_ 1)"
-        "`(-> (~(first x_) ~x) ~@(rest xs))"
-        "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env);
+    if (setjmp(jmp_env) != 0) {
+        fprintf(stderr,"prelude: %s\n",print_str(thrown_var,false,true));
+        return EXIT_FAILURE;
+    }
+    else {
+        rep("(def! not (fn* [x] (if x false true)))",env);
+        rep("(def! load-file (fn* (f) (eval (read-string "
+            "(str \"(do\" (slurp f) \"\\n)\")))))",env);
+        rep("(def! *gensym-counter* (atom 0))",env);
+        rep("(def! gensym "
+            "(fn* [] (symbol (str \"G__\" "
+            "(swap! *gensym-counter* (fn* [x] (+ 1 x)))))))",env);
+        rep("(defmacro! or (fn* (& xs) "
+            "(if (empty? xs) nil (if (= 1 (count xs)) (first xs) "
+            "(let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
+            "(if ~condvar ~condvar (or ~@(rest xs)))))))))",env);
+        rep("(defmacro! and (fn* (& xs) "
+            "(if (empty? xs) true (if (= 1 (count xs)) (first xs) "
+            "`(let* (and_FIXME ~(first xs)) (if (not and_FIXME) and_FIXME "
+            "(and ~@(rest xs))))))))",env);
+        rep("(defmacro! cond (fn* (& xs) "
+            "(if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) "
+            "(nth xs 1) (throw \"odd number of forms to cond\")) "
+            "(cons 'cond (rest (rest xs)))))))",env);
+        rep("(defmacro! -> (fn* [x & xs]"
+            "(if (empty? xs) x"
+            "(let* (x_ (first xs) nelt_ (count x_))"
+            "(if (= nelt_ 0) "
+            "`(-> (~x_ ~x) ~@(rest xs))"
+            "(if (= nelt_ 1)"
+            "`(-> (~(first x_) ~x) ~@(rest xs))"
+            "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env);
+    }
+
     env_put(env,"*host-language*",&host_lang);
     env_put(env,"*ARGV*",list2var(NULL));
     
     /* execute mal program, if found */
     if (argc > 1) {
         if (setjmp(jmp_env) != 0) {
-            fprintf(stderr,"%s\n",print_str(thrown_var,false,true));
+            fprintf(stderr,"%s: %s\n",argv[1],print_str(thrown_var,false,true));
             return EXIT_FAILURE;
         }
         else {
