@@ -455,7 +455,10 @@ VAR* b_slurp(LIST* list)
    
 VAR* b_eval(LIST* list)
 {
-    return eval(list->var,ns_get());
+    VAR* var;
+
+    var = eval(list->var,ns_get());
+    return var;
 }
 
 VAR* cons(VAR* var,LIST* list)
@@ -676,6 +679,7 @@ VAR* b_apply(LIST* list)
     VAR* apply_seq, *apply_args, *apply_fn;
     FN* fn;
     LIST* apply_list;
+    VAR* apply_var, *evaled_var;
     
     if (!list) return &var_nil;
     if (DEBUG) printf("apply form: %s\n",print_str(list2var(list),true,true));
@@ -702,8 +706,9 @@ VAR* b_apply(LIST* list)
         else if (apply_fn->type == S_FN) {
             fn = apply_fn->val.fval;
             if (DEBUG) printf("apply fn forms: %s\n",print_str(fn->forms,true,true));
-            return eval(fn->forms,new_env(37,fn->env,fn->args,
-                                          list2var(apply_list)));
+            apply_var = list2var(apply_list);
+            evaled_var = eval(fn->forms,new_env(37,fn->env,fn->args,apply_var));
+            return evaled_var;
         }
         else {
             throw(mal_error("apply object not callable"));
@@ -1013,14 +1018,16 @@ VAR* b_swap(LIST* list)
     VAR* atom;
     FN* fn;
     LIST* arg_list;
+    VAR* arg_var;
 
     if (list && list->var->type == S_ATOM && list->next) {
         atom = list->var;
         if (list->next->var->type == S_FN) {
             fn = list->next->var->val.fval;
-            arg_list = concat(append(NULL,atom->val.var),list->next->next);
+            arg_var = list2var(concat(append(NULL,atom->val.var),
+                                       list->next->next));
             atom->val.var = eval(fn->forms,new_env(37,fn->env,fn->args,
-                                                   list2var(arg_list)));
+                                                   arg_var));
             return atom->val.var;
         }   
         else if (list->next->var->type == S_BUILTIN) {

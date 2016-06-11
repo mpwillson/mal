@@ -19,36 +19,12 @@
 #define DEBUG 0
 
 /* Define atoms */
-VAR quote = {
-    S_SYM,{"quote"}
-};
-VAR quasiquote = {
-    S_SYM,{"quasiquote"}
-};
-VAR unquote = {
-    S_SYM,{"unquote"}
-};
-VAR splice = {
-    S_SYM,{"splice-unquote"}
-};
-VAR deref = {
-    S_SYM,{"deref"}
-};
-VAR meta = {
-    S_SYM,{"with-meta"}
-};
-VAR var_nil = {
-    S_NIL,{NULL}
-};
-VAR var_true = {
-    S_TRUE,{NULL}
-};
-VAR var_false = {
-    S_FALSE,{NULL}
-};
-VAR empty_list = {
-    S_LIST,{NULL}
-};
+VAR quote           = {S_SYM,{"quote"}};
+VAR quasiquote      = {S_SYM,{"quasiquote"}};
+VAR unquote         = {S_SYM,{"unquote"}};
+VAR splice          = {S_SYM,{"splice-unquote"}};
+VAR deref           = {S_SYM,{"deref"}};
+VAR meta            = {S_SYM,{"with-meta"}};
 VAR do_sym          = {S_SYM,{"do"}};
 VAR def             = {S_SYM,{"def!"}};
 VAR let             = {S_SYM,{"let*"}};
@@ -59,7 +35,13 @@ VAR macroexpand_sym = {S_SYM,{"macroexpand"}};
 VAR try             = {S_SYM,{"try*"}};
 VAR catch           = {S_SYM,{"catch*"}};
 
-VAR host_lang = {S_STR,{"myc"}};
+/* Vars for common values */
+VAR var_nil         = {S_NIL,{NULL}};
+VAR var_true        = {S_TRUE,{NULL}};
+VAR var_false       = {S_FALSE,{NULL}};
+VAR empty_list      = {S_LIST,{NULL}};
+VAR host_lang       = {S_STR,{"myc"}};
+VAR gc_threshold    = {S_INT,{(char *) 500}};
 
 
 /* For error returns */
@@ -408,15 +390,17 @@ VAR* macroexpand(VAR* ast, HASH* env)
       
 VAR* do_form(LIST* form,HASH* env)
 {
-    VAR* var;
+    VAR* var, *var_butlast;
     
     if (form == NULL) return &var_nil;
     if (DEBUG) printf("do_form: %s\n",print_str(form->var,true,true));
     var = last(form);
     add_active(var);
-    eval_ast(but_last(form),env);
+    var_butlast = but_last(form);
+    add_active(var_butlast);
+    eval_ast(var_butlast,env);
     if (DEBUG) printf("do_form2: %s\n",print_str(var,true,true));
-    del_active(1);
+    del_active(2);
     return var;
 }
 
@@ -561,7 +545,6 @@ VAR* eval_ast(VAR* ast, HASH* env)
         return evaled_var;
     }
     else if (islist(ast->type)) {
-        add_active(ast);
         elt = ast->val.lval;
         while (elt != NULL) {
             evaled_var = eval(elt->var,env);
@@ -571,7 +554,6 @@ VAR* eval_ast(VAR* ast, HASH* env)
         list_var = new_var();
         list_var->type = ast->type;
         list_var->val.lval = ref_elt(list);
-        del_active(1);
         return list_var;
     }
     return ast;
@@ -582,7 +564,19 @@ VAR* eval(VAR* ast,HASH* env)
     VAR* eval_list;
     LIST* elt;
     FN* fn = NULL;
+    VAR* gc_var, *hash_var;
 
+    gc_var = env_get(env,"*gc-threshold*");
+    if (gc_var) {
+        add_active(ast);
+        hash_var = new_var();
+        hash_var->type = S_HASHMAP;
+        hash_var->val.hval = env;
+        add_active(hash_var);
+        check_for_gc(gc_var->val.ival);
+        del_active(2);
+    }
+    
     while (true) {
         if (DEBUG) printf("eval: %s\n",print_str(ast,true,true));
         if (ast->type == S_LIST && ast->val.lval != NULL) {
@@ -590,10 +584,10 @@ VAR* eval(VAR* ast,HASH* env)
             if (ast->type != S_LIST) return eval_ast(ast,env);
             elt = ast->val.lval;
             if (elt->var->type == S_SYM) {
-                if (strcmp(elt->var->val.pval,"def!") == 0) {
+                if (elt->var == &def) {
                     return def_form(elt->next,env);
                 }
-                else if (strcmp(elt->var->val.pval,"let*") == 0) {
+                else if (elt->var == &let) {
                     env = let_env(elt->next,env);
                     if (env == NULL) {
                         throw(mal_error("malformed binding form"));
@@ -635,13 +629,10 @@ VAR* eval(VAR* ast,HASH* env)
                 }
             }
             eval_list = eval_ast(ast,env);
-            /* add_active(ast); NOT REQUIRED? (see others below)*/
             if (eval_list->type == S_LIST) {
                 elt = eval_list->val.lval;
                 if (elt->var->type == S_BUILTIN) {
                     eval_list = elt->var->val.bval(elt->next);
-                    if (fn) env->closure = false;
-                    /* del_active(1); */
                     return eval_list;
                 }               
                 else if (elt->var->type == S_FN) {
@@ -656,18 +647,14 @@ VAR* eval(VAR* ast,HASH* env)
                     throw(mal_error("'%s' not found",
                                     print_str(elt->var,true,true)));
                     if (fn) env->closure = false;
-                    /* del_active(1); */
                     return &error;
                 }
             }
             else {
-                if (fn) env->closure = false;
                 return eval_list;
             }   
-            /* del_active(1); */
         }
         else {
-            if (fn) env->closure = false;
             return eval_ast(ast,env);
         }
     }
@@ -715,12 +702,7 @@ int execute_program(char* filename,int nargs,char* argv[],HASH* env)
         nargs--;
     }
     env_put(env,"*ARGV*",list2var(list));
-    if (setjmp(jmp_env) == 0) {
-        rep(cmd,env);
-    }
-    else {
-        fprintf(stderr,"%s\n",print_str(&error,false,true));
-    }
+    rep(cmd,env);
     return 0;
 }
             
@@ -731,6 +713,10 @@ int main(int argc, char* argv[])
     HASH* env = ns_get();
 
     /* define mal functions and macros */
+    env_put(env,"*host-language*",&host_lang);
+    env_put(env,"*ARGV*",&empty_list);
+    env_put(env,"*gc-threshold*",&gc_threshold);
+    
     if (setjmp(jmp_env) != 0) {
         fprintf(stderr,"prelude: %s\n",print_str(thrown_var,false,true));
         return EXIT_FAILURE;
@@ -765,9 +751,6 @@ int main(int argc, char* argv[])
             "`(-> (~(first x_) ~x ~@(rest x_)) ~@(rest xs))))))))",env);
     }
 
-    env_put(env,"*host-language*",&host_lang);
-    env_put(env,"*ARGV*",list2var(NULL));
-    
     /* execute mal program, if found */
     if (argc > 1) {
         if (setjmp(jmp_env) != 0) {

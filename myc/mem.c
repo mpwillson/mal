@@ -210,6 +210,8 @@ void free_elts(LIST* list)
 
 void free_var(VAR* var)
 {
+    if (var->marked) return;
+    
     if (DEBUG) {
         printf("Freeing type: %d; %s\n", var->type,print_str(var,false,true));
     }
@@ -234,6 +236,8 @@ void free_var(VAR* var)
             break;
         case S_FN:
         case S_MACRO:
+            free_var(var->val.fval->args);
+            env_free(var->val.fval->env);
             free(var->val.fval);
             mem_inuse.nfns--;
             break;
@@ -389,5 +393,11 @@ void gc(void)
 
 void check_for_gc(int n)
 {
-    if (mem_inuse.nvars > n) gc();
+    int inuse;
+    
+    if (mem_inuse.nvars > n && n > 0) {
+        inuse = mem_inuse.nvars;
+        gc();
+        printf("GC: %d vars were in-use; freed: %d\n",inuse,inuse-mem_inuse.nvars);
+    }
 }
